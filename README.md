@@ -8,7 +8,7 @@ Status: in development. See [`docs/architecture.md`](docs/architecture.md) for t
 
 - **Backend:** NestJS, Prisma, PostgreSQL
 - **Frontend:** React
-- **Tests:** Jest (scheduling engine unit tests), Playwright (API and end-to-end)
+- **Tests:** Vitest (unit tests, including the scheduling engine), Playwright (API and end-to-end)
 - **Infrastructure:** Docker Compose, GitHub Actions
 
 ## Repository layout

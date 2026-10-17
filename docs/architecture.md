@@ -23,7 +23,7 @@ flowchart LR
 | Scheduling engine | Checks hard constraints, assigns employees, scores soft constraints | TypeScript service inside NestJS, no database access of its own |
 | Database | Persistent storage | PostgreSQL, schema managed by Prisma |
 
-The scheduling engine is a pure function of its input (shifts, employees, availability, rules) and returns assignments plus violations and a score. Keeping it free of HTTP and database code means its rules can be unit tested with Jest in milliseconds, while Playwright tests cover the same rules end to end through the API.
+The scheduling engine is a pure function of its input (shifts, employees, availability, rules) and returns assignments plus violations and a score. Keeping it free of HTTP and database code means its rules can be unit tested with Vitest in milliseconds, while Playwright tests cover the same rules end to end through the API.
 
 ## Domain model
 
@@ -90,7 +90,7 @@ Authentication uses JWT. NestJS guards check the role on every endpoint, and ser
 ## Repository layout
 
 ```
-apps/backend/    NestJS API (modules, Prisma schema, scheduling engine, Jest unit tests)
+apps/backend/    NestJS API (modules, Prisma schema, scheduling engine, Vitest unit tests)
 apps/frontend/   React UI
 playwright/      API and end-to-end tests (pages, fixtures, api clients, factories, utils)
 docs/            architecture, business rules, risk analysis, test strategy, AI-assisted testing
@@ -101,3 +101,5 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 - The scheduling engine uses a priority-based, multi-pass assignment, not an academic constraint solver. This is a deliberate engineering decision: the rules stay readable and testable, at the cost of not always finding the best possible schedule.
 - Publishing is done by the manager who approved the schedule. This could also be a separate step for the planner. Decision to confirm before the workflow module (day 20/11).
 - Rule values (rest period, maximum hours) are configurable and documented in `business-rules.md` as design assumptions, not as legal advice.
+- The backend uses NestJS 12, which generates an ES module project (`"type": "module"`, imports end in `.js`) with Vitest instead of Jest and oxlint instead of ESLint. Vitest has the same `describe`, `it`, `expect` API as Jest, with `vi.fn()` in place of `jest.fn()`. The tracker says Jest; Vitest is kept because it is the framework default.
+- Node 24 LTS is the required runtime (`.nvmrc`). Node 23 does not run the Nest CLI.

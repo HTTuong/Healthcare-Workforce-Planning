@@ -10,12 +10,12 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 
 | Id | Risk | Severity | Expected behavior | Rule | Planned automation |
 |---|---|---|---|---|---|
-| R-SCH-01 | An unqualified or expired-qualification employee is assigned, for example no one with a medication permit on a night shift | Critical | The engine never assigns them and reports the shift as unfilled | BR-H01, BR-H06 | Jest unit tests, Playwright group D |
+| R-SCH-01 | An unqualified or expired-qualification employee is assigned, for example no one with a medication permit on a night shift | Critical | The engine never assigns them and reports the shift as unfilled | BR-H01, BR-H06 | Vitest unit tests, Playwright group D |
 | R-SCH-02 | A ward is left below minimum staffing without anyone noticing | Critical | The schedule shows the shortage as a hard violation and cannot be approved | BR-H06, BR-W03 | Groups D, E, F |
-| R-SCH-03 | The rest period between shifts is broken, for example an evening shift followed by an early morning shift | High | The second assignment is rejected | BR-H05 | Jest boundary tests (exactly 11 h, 10 h 59 min), group D |
+| R-SCH-03 | The rest period between shifts is broken, for example an evening shift followed by an early morning shift | High | The second assignment is rejected | BR-H05 | Vitest boundary tests (exactly 11 h, 10 h 59 min), group D |
 | R-SCH-04 | An employee is assigned while on leave or marked unavailable | High | The assignment is rejected | BR-H02 | Groups B, D |
 | R-SCH-05 | Overlapping shifts or too many weekly hours for one person | High | Rejected | BR-H03, BR-H04 | Group D, group I |
-| R-TIME-01 | Night shifts across midnight or a daylight saving change are measured wrong, so rest periods and weekly hours are wrong | High | Durations use real elapsed UTC time | BR-T01, BR-T02 | Jest tests with fixed dates around 25/10/2026 and 28/03/2027 |
+| R-TIME-01 | Night shifts across midnight or a daylight saving change are measured wrong, so rest periods and weekly hours are wrong | High | Durations use real elapsed UTC time | BR-T01, BR-T02 | Vitest tests with fixed dates around 25/10/2026 and 28/03/2027 |
 | R-WF-01 | A schedule is published without approval, or changed after approval | High | The API refuses the transition or the edit | BR-W01, BR-W02 | Group F |
 | R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix |
 | R-CONS-01 | The UI and the API disagree, for example the UI hides a button but the API still allows the action | Medium | Permissions are enforced in the API, the UI only reflects them | BR-A02 | Group H |
