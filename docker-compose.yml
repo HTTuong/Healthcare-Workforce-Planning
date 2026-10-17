@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: hwp-postgres
+    environment:
+      POSTGRES_USER: hwp_user
+      POSTGRES_PASSWORD: hwp_password
+      POSTGRES_DB: hwp
+    ports:
+      - "5433:5432"
+    volumes:
+      - hwp_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hwp_user -d hwp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  hwp_postgres_data:
