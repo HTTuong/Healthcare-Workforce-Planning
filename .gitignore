@@ -12,3 +12,6 @@ playwright/test-results/
 playwright/playwright-report/
 playwright/blob-report/
 playwright/.auth/
+
+# Prisma generated client (rebuilt by `prisma generate`)
+apps/backend/src/generated/

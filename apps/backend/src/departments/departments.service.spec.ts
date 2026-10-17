@@ -1,16 +1,30 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { DepartmentsService } from './departments.service.js';
+import type { PrismaService } from '../prisma/prisma.service.js';
+
+function createService() {
+  // A fake Prisma client: unit tests must not need a database.
+  const prisma = {
+    department: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
+  };
+  const service = new DepartmentsService(prisma as unknown as PrismaService);
+  return { service, prisma };
+}
 
 describe('DepartmentsService', () => {
-  it('throws NotFoundException for an unknown id', () => {
-    const service = new DepartmentsService();
-    expect(() => service.findOne(99)).toThrow(NotFoundException);
+  it('throws NotFoundException for an unknown id', async () => {
+    const { service, prisma } = createService();
+    prisma.department.findUnique.mockResolvedValue(null);
+    await expect(service.findOne(99)).rejects.toThrow(NotFoundException);
   });
 
-  it('gives each new department its own id', () => {
-    const service = new DepartmentsService();
-    const first = service.create('ER', 'Emergency');
-    const second = service.create('ICU', 'Intensive Care');
-    expect(second.id).not.toBe(first.id);
+  it('turns a duplicate department code into ConflictException', async () => {
+    const { service, prisma } = createService();
+    prisma.department.create.mockRejectedValue({ code: 'P2002' });
+    await expect(service.create('ER', 'Emergency')).rejects.toThrow(ConflictException);
   });
 });

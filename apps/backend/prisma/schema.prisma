@@ -1,0 +1,160 @@
+// Domain model for Healthcare Workforce Planning. See docs/architecture.md.
+// All timestamps are timezone-aware (timestamptz) and stored in UTC.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  PLANNER
+  MANAGER
+  EMPLOYEE
+}
+
+enum ShiftType {
+  MORNING
+  EVENING
+  NIGHT
+}
+
+enum AvailabilityType {
+  AVAILABLE
+  UNAVAILABLE
+  LEAVE
+}
+
+enum ScheduleStatus {
+  DRAFT
+  OPTIMIZED
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+model Department {
+  id                   Int                   @id @default(autoincrement())
+  code                 String                @unique
+  name                 String
+  createdAt            DateTime              @default(now()) @db.Timestamptz(3)
+  employees            Employee[]
+  shifts               Shift[]
+  staffingRequirements StaffingRequirement[]
+  schedules            Schedule[]
+}
+
+// Default minimum staff per shift type in a department.
+model StaffingRequirement {
+  id           Int        @id @default(autoincrement())
+  departmentId Int
+  shiftType    ShiftType
+  minHeadcount Int
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([departmentId, shiftType])
+}
+
+model Employee {
+  id                     Int                     @id @default(autoincrement())
+  firstName              String
+  lastName               String
+  email                  String                  @unique
+  role                   Role                    @default(EMPLOYEE)
+  departmentId           Int?
+  // Stored in minutes to avoid decimals: 2295 min = 38 h 15 min, a common full-time week in Finnish healthcare.
+  contractMinutesPerWeek Int                     @default(2295)
+  active                 Boolean                 @default(true)
+  createdAt              DateTime                @default(now()) @db.Timestamptz(3)
+  department             Department?             @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  qualifications         EmployeeQualification[]
+  availabilities         Availability[]
+  assignments            Assignment[]
+}
+
+model Qualification {
+  id                Int                     @id @default(autoincrement())
+  code              String                  @unique
+  name              String
+  employees         EmployeeQualification[]
+  shiftRequirements ShiftRequirement[]
+}
+
+// A qualification held by an employee. An expired one (validUntil in the past) does not count.
+model EmployeeQualification {
+  employeeId      Int
+  qualificationId Int
+  validUntil      DateTime?     @db.Date
+  employee        Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  qualification   Qualification @relation(fields: [qualificationId], references: [id], onDelete: Cascade)
+
+  @@id([employeeId, qualificationId])
+}
+
+model Availability {
+  id         Int              @id @default(autoincrement())
+  employeeId Int
+  startsAt   DateTime         @db.Timestamptz(3)
+  endsAt     DateTime         @db.Timestamptz(3)
+  type       AvailabilityType
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, startsAt])
+}
+
+model Shift {
+  id                Int                @id @default(autoincrement())
+  departmentId      Int
+  type              ShiftType
+  startsAt          DateTime           @db.Timestamptz(3)
+  endsAt            DateTime           @db.Timestamptz(3)
+  requiredHeadcount Int
+  department        Department         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  requirements      ShiftRequirement[]
+  assignments       Assignment[]
+
+  @@index([departmentId, startsAt])
+}
+
+// For example: this shift needs at least 1 person with a medication permit.
+model ShiftRequirement {
+  shiftId         Int
+  qualificationId Int
+  count           Int           @default(1)
+  shift           Shift         @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  qualification   Qualification @relation(fields: [qualificationId], references: [id], onDelete: Restrict)
+
+  @@id([shiftId, qualificationId])
+}
+
+model Schedule {
+  id           Int            @id @default(autoincrement())
+  departmentId Int
+  periodStart  DateTime       @db.Date
+  periodEnd    DateTime       @db.Date
+  status       ScheduleStatus @default(DRAFT)
+  qualityScore Int?
+  createdAt    DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
+  department   Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  assignments  Assignment[]
+}
+
+model Assignment {
+  id         Int      @id @default(autoincrement())
+  scheduleId Int
+  shiftId    Int
+  employeeId Int
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  shift      Shift    @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  // One employee at most once per shift in a schedule. Overlaps between different shifts are checked by the scheduling engine, not by the database.
+  @@unique([scheduleId, shiftId, employeeId])
+}
