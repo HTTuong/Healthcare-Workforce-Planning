@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Put } from '@nestjs/common';
 import { type EmployeeInput, EmployeesService } from './employees.service.js';
 
 @Controller('employees')
@@ -23,5 +23,23 @@ export class EmployeesController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() body: EmployeeInput) {
     return this.employeesService.update(id, body ?? {});
+  }
+
+  @Put(':id/qualifications/:qualificationId')
+  assignQualification(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('qualificationId', ParseIntPipe) qualificationId: number,
+    @Body() body: { validUntil?: unknown }
+  ) {
+    return this.employeesService.assignQualification(id, qualificationId, body?.validUntil);
+  }
+
+  @Delete(':id/qualifications/:qualificationId')
+  @HttpCode(204)
+  removeQualification(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('qualificationId', ParseIntPipe) qualificationId: number
+  ) {
+    return this.employeesService.removeQualification(id, qualificationId);
   }
 }

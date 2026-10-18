@@ -61,6 +61,27 @@ function parseEmployee(input: EmployeeInput, partial: boolean) {
   return data;
 }
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// "YYYY-MM-DD" -> Date at 00:00 UTC, or null. Rejects impossible dates such as 2026-02-31.
+function parseValidUntil(value: unknown): Date | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) {
+    throw new BadRequestException('validUntil must be null or a date in YYYY-MM-DD format');
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new BadRequestException(`validUntil ${value} is not a real calendar date`);
+  }
+  return date;
+}
+
+// A qualification with no expiry never expires. Otherwise it counts through the whole validUntil day (BR-H01).
+export function isQualificationValid(validUntil: Date | null, today: Date = new Date()): boolean {
+  if (validUntil === null) return true;
+  return validUntil.toISOString().slice(0, 10) >= today.toISOString().slice(0, 10);
+}
+
 @Injectable()
 export class EmployeesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -70,9 +91,19 @@ export class EmployeesService {
   }
 
   async findOne(id: number) {
-    const employee = await this.prisma.employee.findUnique({ where: { id } });
+    const employee = await this.prisma.employee.findUnique({
+      where: { id },
+      include: { qualifications: { include: { qualification: true } } }
+    });
     if (!employee) throw new NotFoundException(`Employee ${id} not found`);
-    return employee;
+    const qualifications = employee.qualifications.map((link) => ({
+      qualificationId: link.qualificationId,
+      code: link.qualification.code,
+      name: link.qualification.name,
+      validUntil: link.validUntil,
+      valid: isQualificationValid(link.validUntil)
+    }));
+    return { ...employee, qualifications };
   }
 
   async create(input: EmployeeInput) {
@@ -91,6 +122,31 @@ export class EmployeesService {
       return await this.prisma.employee.update({ where: { id }, data: data as never });
     } catch (error) {
       throw this.translate(error, `Email ${String(data['email'])} is already used`, `Employee ${id} not found`);
+    }
+  }
+
+    // PUT semantics: assigning the same qualification again only updates validUntil.
+  async assignQualification(employeeId: number, qualificationId: number, validUntilInput: unknown) {
+    const validUntil = parseValidUntil(validUntilInput);
+    try {
+      const link = await this.prisma.employeeQualification.upsert({
+        where: { employeeId_qualificationId: { employeeId, qualificationId } },
+        create: { employeeId, qualificationId, validUntil },
+        update: { validUntil }
+      });
+      return { ...link, valid: isQualificationValid(link.validUntil) };
+    } catch (error) {
+      throw this.translate(error, 'Conflict', `Employee ${employeeId} or qualification ${qualificationId} not found`);
+    }
+  }
+
+  async removeQualification(employeeId: number, qualificationId: number) {
+    try {
+      await this.prisma.employeeQualification.delete({
+        where: { employeeId_qualificationId: { employeeId, qualificationId } }
+      });
+    } catch (error) {
+      throw this.translate(error, 'Conflict', `Employee ${employeeId} does not have qualification ${qualificationId}`);
     }
   }
 
