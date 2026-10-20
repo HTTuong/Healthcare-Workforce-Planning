@@ -17,3 +17,10 @@ export function parsePositiveInt(value: unknown, field: string): number {
   }
   return value;
 }
+
+export function parseNonEmptyText(value: unknown, field: string): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new BadRequestException(`${field} must be a non-empty string`);
+  }
+  return value.trim();
+}
