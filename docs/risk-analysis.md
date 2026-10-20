@@ -40,6 +40,10 @@ Only behavior confirmed by a real run is listed here. Each row names the run tha
 | Shift | A night shift across the end of daylight saving time (24/10/2026 22:00+03:00 to 25/10/2026 06:00+02:00) is stored as 19:00Z to 04:00Z, which is 9 real hours | curl, read back with GET /shifts/4 |
 | Shift | A requirement count above the shift headcount, a missing UTC offset and an end not after the start all return 400, and an unknown department or qualification returns 404 | curl |
 | Shift | Lowering the headcount below an existing requirement count returns 400, and removing a requirement or a shift twice returns 404 the second time | curl |
+| Staffing requirement | Setting the minimum headcount for a department and shift type twice keeps one row and changes the number | curl, PUT NIGHT 3 then 4, list shows one row |
+| Staffing requirement | An unknown shift type, a minimum below 1 and an unknown department are rejected with 400, 400 and 404 | curl |
+| Department | A department that still has shifts, employees or schedules cannot be deleted and returns 409 | curl, department with one shift |
+| Department | An empty department can be renamed and deleted, a duplicate code returns 409, an empty update returns 400 | curl |
 | Unit tests | 29 tests pass across 6 spec files | `npm test` |
 
 ## How this document will grow
