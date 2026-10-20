@@ -37,6 +37,9 @@ Only behavior confirmed by a real run is listed here. Each row names the run tha
 | Availability | The same instant written with a different offset is detected as overlapping | curl, status 409 |
 | Availability | A timestamp without a UTC offset returns 400 | curl |
 | Availability | Unknown employee returns 404, a repeated delete returns 404 | curl |
+| Shift | A night shift across the end of daylight saving time (24/10/2026 22:00+03:00 to 25/10/2026 06:00+02:00) is stored as 19:00Z to 04:00Z, which is 9 real hours | curl, read back with GET /shifts/4 |
+| Shift | A requirement count above the shift headcount, a missing UTC offset and an end not after the start all return 400, and an unknown department or qualification returns 404 | curl |
+| Shift | Lowering the headcount below an existing requirement count returns 400, and removing a requirement or a shift twice returns 404 the second time | curl |
 | Unit tests | 29 tests pass across 6 spec files | `npm test` |
 
 ## How this document will grow
