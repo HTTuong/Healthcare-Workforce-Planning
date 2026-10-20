@@ -7,9 +7,10 @@ import { PrismaModule } from './prisma/prisma.module.js';
 import { QualificationsModule } from './qualifications/qualifications.module.js';
 import { AvailabilitiesModule } from './availabilities/availabilities.module.js';
 import { ShiftsModule } from './shifts/shifts.module.js';
+import { StaffingRequirementsModule } from './staffing-requirements/staffing-requirements.module.js';
 
 @Module({
-  imports: [PrismaModule, DepartmentsModule, EmployeesModule, QualificationsModule, AvailabilitiesModule, ShiftsModule],
+  imports: [PrismaModule, DepartmentsModule, EmployeesModule, QualificationsModule, AvailabilitiesModule, ShiftsModule, StaffingRequirementsModule],
   controllers: [AppController],
   providers: [AppService],
 })
