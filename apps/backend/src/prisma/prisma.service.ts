@@ -6,7 +6,11 @@ import { PrismaClient } from '../generated/prisma/client.js';
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   constructor() {
     // Prisma 7 talks to PostgreSQL through a driver adapter.
-    super({ adapter: new PrismaPg({ connectionString: process.env['DATABASE_URL'] }) });
+      super({
+        adapter: new PrismaPg({ connectionString: process.env['DATABASE_URL'] }),
+        // The password hash never leaves the database layer unless a query asks for it explicitly.
+        omit: { employee: { passwordHash: true } }
+      });
   }
 
   async onModuleInit() {
