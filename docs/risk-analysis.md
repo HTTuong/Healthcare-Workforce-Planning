@@ -72,7 +72,9 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Quality score | Ranking by the quality score raised the average quality on 300 random inputs from 75.8 to 79.0, and from 72.8 to 76.8 with 40 shifts and 12 employees, mostly through preference (33.3 to 48.9). Workload fell (91.6 to 87.1), a trade off set by the weights | before and after run |
 | Quality score | The change did not cost coverage: 10 complete schedules missed out of 499, before and after, on the same 3746 inputs | exhaustive search |
 | Determinism | Floating point sums made the choice between two equal candidates depend on the input order. The Gini coefficient now sorts its values, and the property test on input order covers it | `engine.properties.spec.ts`, `soft-scores.quality.spec.ts` |
-| Unit tests | 212 tests pass across 35 spec files | `npm test` |
+| Engine isolation | The engine imports nothing outside its folder and uses no clock, randomness or environment. The architecture test failed for each of these when one was inserted on purpose | `engine.architecture.spec.ts` |
+| Coverage | The engine has 100 % statement, branch, function and line coverage, enforced by `npm run test:engine`, which fails when coverage drops (checked by removing a test file). The whole backend is at 87.0 % of statements, and the rest is left to the API tests | coverage report |
+| Unit tests | 220 tests pass across 37 spec files | `npm test` |
 
 ## How this document will grow
 
