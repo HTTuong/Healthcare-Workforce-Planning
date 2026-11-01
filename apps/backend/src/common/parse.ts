@@ -45,3 +45,14 @@ export function parseNonEmptyText(value: unknown, field: string): string {
   }
   return value.trim();
 }
+
+/** A calendar date written YYYY-MM-DD, checked part by part like parseInstant (F-03). Returns the same text. */
+export function parseLocalDate(value: unknown, field: string): string {
+  const match = typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
+  if (!match) throw new BadRequestException(`${field} must be a date in YYYY-MM-DD format`);
+  const [, year, month, day] = match;
+  const valid =
+    Number(month) >= 1 && Number(month) <= 12 && Number(day) >= 1 && Number(day) <= daysInMonth(Number(year), Number(month));
+  if (!valid) throw new BadRequestException(`${field} ${String(value)} is not a real calendar date`);
+  return value as string;
+}
