@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test of login, role checks and availability ownership against a running API (BR-A01 to BR-A03).
+# Smoke test of login, role checks, availability ownership and the d193 exploratory fixes against a running API.
 # Usage: npm run rbac-smoke   (the API must be running and the admin must exist, see npm run create-admin)
 # Safe to run again: it reuses the smoke users and removes the department and availability it creates.
 set -u
@@ -124,6 +124,24 @@ check "employee sees only its own availability" "$EMPLOYEE_ID" "$(owners)"
 request GET /availabilities "$PLANNER_TOKEN" >/dev/null
 check "planner without a department sees only its own availability" "$PLANNER_ID" "$(owners)"
 check "employee deletes its own availability" 204 "$(request DELETE "/availabilities/$OWN_ID" "$EMPLOYEE_TOKEN")"
+echo "== Account state (exploratory finding F-04)"
+check "admin deactivates the employee" 200 "$(request PATCH "/employees/$EMPLOYEE_ID" "$ADMIN_TOKEN" '{"active":false}')"
+check "the token of a deactivated employee is refused at once" 401 "$(request GET /auth/me "$EMPLOYEE_TOKEN")"
+check "admin reactivates the employee" 200 "$(request PATCH "/employees/$EMPLOYEE_ID" "$ADMIN_TOKEN" '{"active":true}')"
+check "the same token works again" 200 "$(request GET /auth/me "$EMPLOYEE_TOKEN")"
+check "admin promotes the employee to planner" 200 "$(request PATCH "/employees/$EMPLOYEE_ID" "$ADMIN_TOKEN" '{"role":"PLANNER"}')"
+check "the old token gets the new role at once" 200 "$(request GET /shifts "$EMPLOYEE_TOKEN")"
+check "admin demotes the employee again" 200 "$(request PATCH "/employees/$EMPLOYEE_ID" "$ADMIN_TOKEN" '{"role":"EMPLOYEE"}')"
+check "the old token loses the planner rights at once" 403 "$(request GET /shifts "$EMPLOYEE_TOKEN")"
+
+echo "== Input validation (exploratory findings F-01 to F-03, F-06)"
+check "department without a name is a bad request, not 500" 400 "$(request POST /departments "$ADMIN_TOKEN" '{"code":"NONAME"}')"
+check "department with a blank code is a bad request" 400 "$(request POST /departments "$ADMIN_TOKEN" '{"code":"  ","name":"Blank"}')"
+check "an id above the integer range is a bad request, not 500" 400 "$(request GET /departments/2147483648 "$ADMIN_TOKEN")"
+check "a query id above the integer range is a bad request, not 500" 400 "$(request GET "/availabilities?employeeId=99999999999" "$ADMIN_TOKEN")"
+check "30 February is a bad request, not 2 March" 400 "$(request POST /availabilities "$ADMIN_TOKEN" "{\"employeeId\":$EMPLOYEE_ID,\"startsAt\":\"2027-02-30T08:00:00+02:00\",\"endsAt\":\"2027-02-30T16:00:00+02:00\",\"type\":\"LEAVE\"}")"
+check "responses do not reveal the framework" 0 "$(curl -s -D - -o /dev/null "$BASE_URL/" | grep -ci 'x-powered-by')"
+
 # Clean up whatever is left, so the next run starts from the same state.
 request DELETE "/availabilities/$AVAILABILITY_ID" "$ADMIN_TOKEN" >/dev/null
 request DELETE "/availabilities/$OWN_ID" "$ADMIN_TOKEN" >/dev/null
