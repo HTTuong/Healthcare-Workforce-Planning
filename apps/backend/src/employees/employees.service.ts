@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { MAX_INT32 } from '../common/parse.js';
 
 const ROLES = ['ADMIN', 'PLANNER', 'MANAGER', 'EMPLOYEE'] as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -42,8 +43,9 @@ function parseEmployee(input: EmployeeInput, partial: boolean) {
     data['role'] = input.role;
   }
   if (input.departmentId !== undefined) {
-    if (input.departmentId !== null && !Number.isInteger(input.departmentId)) {
-      throw new BadRequestException('departmentId must be an integer or null');
+    const id = input.departmentId;
+    if (id !== null && (!Number.isInteger(id) || (id as number) < 1 || (id as number) > MAX_INT32)) {
+      throw new BadRequestException('departmentId must be a positive integer or null');
     }
     data['departmentId'] = input.departmentId;
   }
