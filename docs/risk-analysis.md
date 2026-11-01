@@ -64,7 +64,10 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Hard constraints | Every boundary of BR-H01 to BR-H07 and BR-T03 in `scheduling-engine.md` has a unit test, including real time rest and weekly hours across both daylight saving changes | 48 Vitest tests in `src/scheduling` |
 | Hard constraints | 11 deliberate mistakes in the checks, such as `<` changed to `<=` for the rest period, were each caught by at least one test | mutation check by hand |
 | Qualification expiry | An expired qualification was shown as valid until 03:00 Helsinki time because dates were compared in UTC. Fixed, and the new tests fail against the old code | `employees.qualification-time.spec.ts` |
-| Unit tests | 162 tests pass across 30 spec files | `npm test` |
+| Scheduling engine | On 300 random inputs the engine never adds an assignment that breaks an employee level rule, reports exactly what the independent validation finds, never staffs a shift above its headcount, and gives the same schedule whatever the order of the input | `engine.properties.spec.ts` |
+| Scheduling engine | Compared with an exhaustive search on 3746 small inputs with many requirements (499 with a complete schedule), the engine missed 10 complete schedules (2.0 %), down from 45 (9.0 %) with a fixed order. Each miss shows as BR-H06, never as a broken rule | exhaustive search, known greedy limit in `engine.spec.ts` |
+| Performance | One department with 100 shifts and 50 employees is planned in 0.66 s, down from 17 s before the checks cached time zone results, with identical output on 1000 random inputs | timing run and comparison of both versions |
+| Unit tests | 180 tests pass across 32 spec files | `npm test` |
 
 ## How this document will grow
 
