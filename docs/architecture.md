@@ -98,7 +98,7 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 
 ## Decisions and open questions
 
-- The scheduling engine uses a priority-based, multi-pass assignment, not an academic constraint solver. This is a deliberate engineering decision: the rules stay readable and testable, at the cost of not always finding the best possible schedule.
+- The scheduling engine uses a priority-based, multi-pass assignment, not an academic constraint solver. This is a deliberate engineering decision: the rules stay readable and testable, at the cost of not always finding the best possible schedule. The design, with the exact rule definitions and the test plan, is in `scheduling-engine.md`.
 - Publishing is done by the manager who approved the schedule. This could also be a separate step for the planner. Decision to confirm before the workflow module (day 20/11).
 - Rule values (rest period, maximum hours) are configurable and documented in `business-rules.md` as design assumptions, not as legal advice.
 - The backend uses NestJS 12, which generates an ES module project (`"type": "module"`, imports end in `.js`) with Vitest instead of Jest and oxlint instead of ESLint. Vitest has the same `describe`, `it`, `expect` API as Jest, with `vi.fn()` in place of `jest.fn()`. The tracker says Jest; Vitest is kept because it is the framework default.
