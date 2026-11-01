@@ -29,7 +29,10 @@ export class DepartmentsService {
     return department;
   }
 
-  async create(code: string, name: string) {
+  async create(codeInput: unknown, nameInput: unknown) {
+    // The body is untrusted input. Without this check a missing field reached Prisma and gave 500 (F-01).
+    const code = parseNonEmptyText(codeInput, 'code');
+    const name = parseNonEmptyText(nameInput, 'name');
     try {
       return await this.prisma.department.create({ data: { code, name } });
     } catch (error) {
