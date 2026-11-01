@@ -107,4 +107,6 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 - Access is denied by default: a route without `@Roles` or `@Public` returns 403, so a forgotten decorator cannot open an endpoint.
 - Passwords are hashed with scrypt from the Node crypto module, with a random salt per password and a length of 12 to 128 characters. Login gives the same message for every failure. Tokens use HS256, are valid for 8 hours and carry only the employee id and role. The API does not start without a JWT_SECRET of at least 32 characters.
 - The first admin is created with `npm run create-admin`, which reads ADMIN_EMAIL and ADMIN_PASSWORD. Other passwords are set by an admin through `PUT /auth/password/:employeeId`.
-- Not done yet: ownership checks for availability (BR-A03), rate limiting of failed logins, and revoking a token before it expires.
+- Ownership of availability (BR-A03) is checked by `AvailabilityAccess`. An admin may write anyone's availability, every other role only its own. An employee reads only its own records, a planner or manager reads its own department (only its own records when it has no department), and an admin reads everything.
+- Trade-off: for a non admin, someone else's record answers 403 while a missing record answers 404, so the existence of a record can be inferred. A planner who asks for an employee outside its department gets an empty list rather than 403.
+- Not done yet: rate limiting of failed logins, and revoking a token before it expires.
