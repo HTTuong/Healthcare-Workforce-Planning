@@ -69,7 +69,10 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Performance | One department with 100 shifts and 50 employees is planned in 0.66 s, down from 17 s before the checks cached time zone results, with identical output on 1000 random inputs | timing run and comparison of both versions |
 | Soft scores | The fairness and workload scores fall to 50 when one of two equal employees gets every night or all the work, and both are measured relative to contract hours | `soft-scores.spec.ts` |
 | Soft scores | On 300 random inputs the current ranking raises fairness from 62.0 to 76.8 and workload from 69.5 to 91.6 compared with choosing by id only, while preference stays low (33.3 against 35.3), which the weights of day 18/11 must address | baseline run |
-| Unit tests | 200 tests pass across 34 spec files | `npm test` |
+| Quality score | Ranking by the quality score raised the average quality on 300 random inputs from 75.8 to 79.0, and from 72.8 to 76.8 with 40 shifts and 12 employees, mostly through preference (33.3 to 48.9). Workload fell (91.6 to 87.1), a trade off set by the weights | before and after run |
+| Quality score | The change did not cost coverage: 10 complete schedules missed out of 499, before and after, on the same 3746 inputs | exhaustive search |
+| Determinism | Floating point sums made the choice between two equal candidates depend on the input order. The Gini coefficient now sorts its values, and the property test on input order covers it | `engine.properties.spec.ts`, `soft-scores.quality.spec.ts` |
+| Unit tests | 212 tests pass across 35 spec files | `npm test` |
 
 ## How this document will grow
 
