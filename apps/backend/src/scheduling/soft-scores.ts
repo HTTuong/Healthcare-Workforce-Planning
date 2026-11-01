@@ -159,7 +159,7 @@ function workloadFrom(index: ScoreIndex, byEmployee: Map<number, EngineShift[]>)
   return evenness(
     index.compared.map(
       (employee) =>
-        (byEmployee.get(employee.id) ?? []).reduce((sum, shift) => sum + (index.minutes.get(shift.id) ?? 0), 0) /
+        (byEmployee.get(employee.id) ?? []).reduce((sum, shift) => sum + index.minutes.get(shift.id)!, 0) /
         employee.contractMinutesPerWeek
     )
   );
@@ -176,8 +176,9 @@ function overtimeFrom(input: EngineInput, index: ScoreIndex, byEmployee: Map<num
   for (const [employeeId, shifts] of byEmployee) {
     const weeks = new Map<string, number>();
     for (const shift of shifts) {
-      assigned += index.minutes.get(shift.id) ?? 0;
-      for (const [week, minutes] of index.weekMinutes.get(shift.id) ?? []) addTo(weeks, week, minutes);
+      // shiftsByEmployee only returns shifts of the input, and the index has an entry for each of them.
+      assigned += index.minutes.get(shift.id)!;
+      for (const [week, minutes] of index.weekMinutes.get(shift.id)!) addTo(weeks, week, minutes);
     }
     const contract = input.employees.find((employee) => employee.id === employeeId)?.contractMinutesPerWeek ?? 0;
     if (contract <= 0) continue;
