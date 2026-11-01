@@ -9,9 +9,10 @@ import { AvailabilitiesModule } from './availabilities/availabilities.module.js'
 import { ShiftsModule } from './shifts/shifts.module.js';
 import { StaffingRequirementsModule } from './staffing-requirements/staffing-requirements.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { SchedulesModule } from './schedules/schedules.module.js';
 
 @Module({
-  imports: [PrismaModule, DepartmentsModule, EmployeesModule, QualificationsModule, AvailabilitiesModule, ShiftsModule, StaffingRequirementsModule, AuthModule],
+  imports: [PrismaModule, DepartmentsModule, EmployeesModule, QualificationsModule, AvailabilitiesModule, ShiftsModule, StaffingRequirementsModule, AuthModule, SchedulesModule],
   controllers: [AppController],
   providers: [AppService],
 })
