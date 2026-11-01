@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import { type EmployeeInput, EmployeesService } from './employees.service.js';
 import { STAFF_ROLES } from '../auth/role-sets.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -15,7 +16,7 @@ export class EmployeesController {
 
   @Roles(...STAFF_ROLES)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIdPipe) id: number) {
     return this.employeesService.findOne(id);
   }
 
@@ -27,15 +28,15 @@ export class EmployeesController {
 
   @Roles('ADMIN')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() body: EmployeeInput) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() body: EmployeeInput) {
     return this.employeesService.update(id, body ?? {});
   }
 
   @Roles('ADMIN')
   @Put(':id/qualifications/:qualificationId')
   assignQualification(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('qualificationId', ParseIntPipe) qualificationId: number,
+    @Param('id', ParseIdPipe) id: number,
+    @Param('qualificationId', ParseIdPipe) qualificationId: number,
     @Body() body: { validUntil?: unknown }
   ) {
     return this.employeesService.assignQualification(id, qualificationId, body?.validUntil);
@@ -45,8 +46,8 @@ export class EmployeesController {
   @Delete(':id/qualifications/:qualificationId')
   @HttpCode(204)
   removeQualification(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('qualificationId', ParseIntPipe) qualificationId: number
+    @Param('id', ParseIdPipe) id: number,
+    @Param('qualificationId', ParseIdPipe) qualificationId: number
   ) {
     return this.employeesService.removeQualification(id, qualificationId);
   }
