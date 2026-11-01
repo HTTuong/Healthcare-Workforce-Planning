@@ -1,12 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { parseInstant, parsePositiveInt } from '../common/parse.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { AvailabilityScope } from './availability-access.service.js';
 
 const TYPES = ['AVAILABLE', 'UNAVAILABLE', 'LEAVE'] as const;
 type AvailabilityKind = (typeof TYPES)[number];
-
-// An explicit UTC offset is mandatory, so "08:00" can never mean two different instants (R-TIME).
-const INSTANT_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
 export interface AvailabilityInput {
   employeeId?: unknown;
@@ -17,14 +15,6 @@ export interface AvailabilityInput {
 
 function errorCode(error: unknown): string | undefined {
   return typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : undefined;
-}
-
-function parseInstant(value: unknown, field: string): Date {
-  const message = `${field} must be an ISO 8601 timestamp with an offset, for example 2026-10-25T08:00:00+02:00`;
-  if (typeof value !== 'string' || !INSTANT_PATTERN.test(value)) throw new BadRequestException(message);
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) throw new BadRequestException(message);
-  return date;
 }
 
 function parseType(value: unknown): AvailabilityKind {
@@ -63,8 +53,7 @@ export class AvailabilitiesService {
   }
 
   async create(input: AvailabilityInput) {
-    if (!Number.isInteger(input.employeeId)) throw new BadRequestException('employeeId must be an integer');
-    const employeeId = input.employeeId as number;
+    const employeeId = parsePositiveInt(input.employeeId, 'employeeId');
     const startsAt = parseInstant(input.startsAt, 'startsAt');
     const endsAt = parseInstant(input.endsAt, 'endsAt');
     const type = parseType(input.type);
