@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Put } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import { StaffingRequirementsService } from './staffing-requirements.service.js';
 import { SCHEDULING_ROLES, STAFF_ROLES } from '../auth/role-sets.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -9,14 +10,14 @@ export class StaffingRequirementsController {
 
   @Roles(...STAFF_ROLES)
   @Get()
-  findAll(@Param('departmentId', ParseIntPipe) departmentId: number) {
+  findAll(@Param('departmentId', ParseIdPipe) departmentId: number) {
     return this.staffingRequirementsService.findAll(departmentId);
   }
 
   @Roles(...SCHEDULING_ROLES)
   @Put(':shiftType')
   set(
-    @Param('departmentId', ParseIntPipe) departmentId: number,
+    @Param('departmentId', ParseIdPipe) departmentId: number,
     @Param('shiftType') shiftType: string,
     @Body() body: { minHeadcount?: unknown }
   ) {
@@ -26,7 +27,7 @@ export class StaffingRequirementsController {
   @Roles(...SCHEDULING_ROLES)
   @Delete(':shiftType')
   @HttpCode(204)
-  remove(@Param('departmentId', ParseIntPipe) departmentId: number, @Param('shiftType') shiftType: string) {
+  remove(@Param('departmentId', ParseIdPipe) departmentId: number, @Param('shiftType') shiftType: string) {
     return this.staffingRequirementsService.remove(departmentId, shiftType);
   }
 }
