@@ -2,7 +2,7 @@
 
 This document defines what the scheduling engine must do before any of it is written: the exact meaning of every hard constraint, including its boundaries, the shape of the algorithm, and how each rule will be tested. The rules themselves are listed in `business-rules.md`. This document makes them precise enough to test.
 
-Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, and the assignment algorithm in `engine.ts`. Soft constraint scoring (days 17/11 and 18/11) follows.
+Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, the assignment algorithm in `engine.ts`, and the soft scores BR-S01 to BR-S03 in `soft-scores.ts`. Overtime, the weights and the combined quality score (day 18/11) follow.
 
 ## Boundaries
 
@@ -96,6 +96,29 @@ Every miss shows as a BR-H06 violation, never as a broken rule. `engine.spec.ts`
 
 Choosing by least slack calls the candidate check far more often, and each call converted times between time zones. The checks therefore index the input and cache the time zone results once per input. In the scratch environment one department with 100 shifts and 50 employees went from 17 s to 0.66 s (50 x 25: 0.17 s, 150 x 60: 1.6 s), and the output was identical before and after the change on 1000 random inputs. The input must not change during a run.
 
+## Soft scores
+
+Each soft goal gets a score from 0 to 100, where 100 is the best. The scores are measured, never enforced: a low score does not block approval, a hard violation does.
+
+| Score | Definition | Why this way |
+|---|---|---|
+| BR-S01 preference | Share of assignments fully inside an AVAILABLE record, counting only employees who marked some AVAILABLE time | Someone who never stated a preference cannot be pleased or disappointed by an assignment |
+| BR-S02 fairness | 100 x (1 - Gini) of night and weekend shifts per contract minute | The Gini coefficient is 0 for a perfectly even spread and does not depend on the unit, and dividing by contract minutes keeps part time staff from looking short changed |
+| BR-S03 workload | 100 x (1 - Gini) of assigned real minutes per contract minute | Real minutes, so a 9 hour night over a daylight saving change weighs as 9 hours |
+
+Only active employees with contract hours take part in BR-S02 and BR-S03. An empty schedule scores 100 on all three, because nobody is favoured.
+
+Baseline of the current ranking, as the average over 300 seeded random inputs, against a version that chooses by employee id only:
+
+| Inputs | Ranking | Preference | Fairness | Workload |
+|---|---|---|---|---|
+| 4 to 12 shifts, 3 to 6 employees | current | 33.3 | 76.8 | 91.6 |
+| 4 to 12 shifts, 3 to 6 employees | id only | 35.3 | 62.0 | 69.5 |
+| 40 shifts, 12 employees | current | 10.9 | 83.2 | 96.7 |
+| 40 shifts, 12 employees | id only | 7.9 | 61.7 | 70.6 |
+
+The ranking already improves fairness and workload a lot. Preference stays low, and on small inputs even below the id only version, because AVAILABLE only breaks ties after the load. The weights of day 18/11 must fix this.
+
 ## Test plan
 
 The unit tests live next to the engine and use fixed dates, never the current time.
@@ -110,7 +133,7 @@ The unit tests live next to the engine and use fixed dates, never the current ti
 | Greedy limits | A fixture where the result has a BR-H06 violation, documented as expected | Vitest |
 | End to end | Generate a schedule through the API and check the rules on what was saved | Playwright, group D |
 
-Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
+Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. The soft scores have 17 tests with values worked out by hand and 3 properties on random inputs. All 9 deliberate mistakes in the scores, such as taking the weekend from the UTC date, were caught. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
 
 ## Open questions
 
