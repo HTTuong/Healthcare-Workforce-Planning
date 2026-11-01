@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import { type ShiftInput, ShiftsService } from './shifts.service.js';
 import { SCHEDULING_ROLES, STAFF_ROLES } from '../auth/role-sets.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -9,13 +10,13 @@ export class ShiftsController {
 
   @Roles(...STAFF_ROLES)
   @Get()
-  findAll(@Query('departmentId', new ParseIntPipe({ optional: true })) departmentId?: number) {
+  findAll(@Query('departmentId', new ParseIdPipe({ optional: true })) departmentId?: number) {
     return this.shiftsService.findAll(departmentId);
   }
 
   @Roles(...STAFF_ROLES)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIdPipe) id: number) {
     return this.shiftsService.findOne(id);
   }
 
@@ -27,22 +28,22 @@ export class ShiftsController {
 
   @Roles(...SCHEDULING_ROLES)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() body: ShiftInput) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() body: ShiftInput) {
     return this.shiftsService.update(id, body ?? {});
   }
 
   @Roles(...SCHEDULING_ROLES)
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIdPipe) id: number) {
     return this.shiftsService.remove(id);
   }
 
   @Roles(...SCHEDULING_ROLES)
   @Put(':id/requirements/:qualificationId')
   setRequirement(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('qualificationId', ParseIntPipe) qualificationId: number,
+    @Param('id', ParseIdPipe) id: number,
+    @Param('qualificationId', ParseIdPipe) qualificationId: number,
     @Body() body: { count?: unknown }
   ) {
     return this.shiftsService.setRequirement(id, qualificationId, body?.count);
@@ -52,8 +53,8 @@ export class ShiftsController {
   @Delete(':id/requirements/:qualificationId')
   @HttpCode(204)
   removeRequirement(
-    @Param('id', ParseIntPipe) id: number,
-    @Param('qualificationId', ParseIntPipe) qualificationId: number
+    @Param('id', ParseIdPipe) id: number,
+    @Param('qualificationId', ParseIdPipe) qualificationId: number
   ) {
     return this.shiftsService.removeRequirement(id, qualificationId);
   }
