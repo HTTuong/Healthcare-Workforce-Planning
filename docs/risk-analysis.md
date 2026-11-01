@@ -18,6 +18,7 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 | R-TIME-01 | Night shifts across midnight or a daylight saving change are measured wrong, so rest periods and weekly hours are wrong | High | Durations use real elapsed UTC time | BR-T01, BR-T02 | Vitest tests with fixed dates around 25/10/2026 and 28/03/2027. Availability input without a UTC offset is rejected with 400, and ranges are compared as absolute instants (verified with curl on 25/10/2026) |
 | R-WF-01 | A schedule is published without approval, or changed after approval | High | The API refuses the transition or the edit | BR-W01, BR-W02 | Group F |
 | R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix. The matrix is a unit test that reads the decorators of every route (`role-matrix.spec.ts`), and `scripts/rbac-smoke.sh` checks the roles against the running API. Ownership of availability (BR-A03) is enforced by `AvailabilityAccess` and covered by unit tests and the smoke test |
+| R-WF-02 | A shift of an approved or published schedule is changed or deleted, so the published schedule no longer matches what was approved | High | The change is refused, or it sends the schedule back through review | BR-W01 | Pinned in `workflow-smoke.sh`, open |
 | R-CONS-01 | The UI and the API disagree, for example the UI hides a button but the API still allows the action | Medium | Permissions are enforced in the API, the UI only reflects them | BR-A02 | Group H |
 | R-CONC-01 | Two planners edit or generate the same schedule at the same time and double-book an employee | Medium | One request wins, the other gets a conflict error | BR-H03 | Concurrency test, approach reused from Project 1. Confirmed gap (F-05 in `exploratory-testing.md`): with 10 parallel identical availability requests, 2 to 3 overlapping rows were stored in 4 of 5 rounds, because the overlap check runs before the insert. A database level exclusion constraint is planned |
 | R-AUTH-01 | A deactivated employee, or one whose role was lowered, keeps the old access until the token expires | High | Access follows the account on every request | BR-A01, BR-A02 | `active-user.guard.spec.ts`, smoke test section "Account state" (found as F-04) |
@@ -29,7 +30,7 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 
 Only behavior confirmed by a real run is listed here. Each row names the run that showed it.
 
-The authentication, role and ownership rows come from runs of the built API against PostgreSQL 16 in a scratch environment on 2026-11-01, and are repeated on the development machine with `npm run rbac-smoke`.
+The authentication, role and ownership rows come from runs of the built API against PostgreSQL 16 in a scratch environment on 2026-11-01, and are repeated on the development machine with `npm run rbac-smoke`. The workflow rows come from the same environment and are repeated with `npm run workflow-smoke`.
 
 | Area | Observed behavior | Evidence |
 |---|---|---|
@@ -74,7 +75,14 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Determinism | Floating point sums made the choice between two equal candidates depend on the input order. The Gini coefficient now sorts its values, and the property test on input order covers it | `engine.properties.spec.ts`, `soft-scores.quality.spec.ts` |
 | Engine isolation | The engine imports nothing outside its folder and uses no clock, randomness or environment. The architecture test failed for each of these when one was inserted on purpose | `engine.architecture.spec.ts` |
 | Coverage | The engine has 100 % statement, branch, function and line coverage, enforced by `npm run test:engine`, which fails when coverage drops (checked by removing a test file). The whole backend is at 87.0 % of statements, and the rest is left to the API tests | coverage report |
-| Unit tests | 220 tests pass across 37 spec files | `npm test` |
+| Workflow states | All 30 pairs of status and action match the state diagram, PUBLISHED cannot be reached without approval, and REVIEW cannot be reached without an engine run | `schedule-workflow.spec.ts` |
+| Workflow API | 80 checks pass: wrong order (409), wrong role (403), hard violations block approval with the list of violations, hand edits send the schedule back to DRAFT, and employees see only their own shifts of published schedules. Every run after the fixes passed (24 runs, the last 12 with all 80 checks), planning weeks from January to November 2028 across both daylight saving changes | `workflow-smoke.sh` |
+| Workflow tests | 17 deliberate mistakes, such as publishing from REVIEW, approving despite violations or showing drafts to employees, were each caught by the unit tests | mutation check by hand |
+| Concurrency | 8 parallel identical schedule creations stored exactly one schedule in 10 of 10 rounds. Without the serializable transaction, 5 of 10 rounds stored 2 to 4 overlapping schedules | repeated parallel requests, with and without the fix |
+| Concurrency | Two schedules that each book the same nurse at the same time, approved in parallel: exactly one is approved in every run, and approving the other one afterwards returns 409 with BR-H03. Without the serializable transaction, both were approved in 3 of 4 runs | `workflow-smoke.sh`, with and without the fix |
+| Concurrency | The lost race returned 500 in 3 runs in a row, because the pg driver adapter does not use Prisma's P2034 code. It now returns 409 | server log, `db-errors.spec.ts` |
+| Published schedule | A planner can still change (200) and delete (204) a shift of a published schedule, and the deleted shift's assignment disappears while the schedule stays PUBLISHED (R-WF-02, open) | pinned checks in `workflow-smoke.sh` |
+| Unit tests | 269 tests pass across 42 spec files | `npm test` |
 
 ## How this document will grow
 
