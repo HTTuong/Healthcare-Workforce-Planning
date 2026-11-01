@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test of login and role checks against a running API (BR-A01, BR-A02, known gap BR-A03).
+# Smoke test of login, role checks and availability ownership against a running API (BR-A01 to BR-A03).
 # Usage: npm run rbac-smoke   (the API must be running and the admin must exist, see npm run create-admin)
 # Safe to run again: it reuses the smoke users and removes the department and availability it creates.
 set -u
@@ -10,7 +10,6 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD:-Admin-Password-123!}"
 SMOKE_PASSWORD='Smoke-Password-123!'
 BODY="$(mktemp)"
 failures=0
-gaps=0
 
 # request METHOD PATH TOKEN [JSON]: prints the HTTP status, the response body goes to $BODY.
 request() {
@@ -23,6 +22,11 @@ request() {
 # field EXPRESSION: reads a value from the last response body, for example field '["id"]'.
 field() {
   python3 -c "import json,sys; print(json.load(open(sys.argv[1]))$1)" "$BODY" 2>/dev/null
+}
+
+# owners: prints the distinct employeeId values of the last response body, comma separated.
+owners() {
+  python3 -c "import json,sys; print(','.join(sorted({str(a['employeeId']) for a in json.load(open(sys.argv[1]))})))" "$BODY" 2>/dev/null
 }
 
 # check NAME EXPECTED ACTUAL
@@ -106,19 +110,24 @@ check "planner sets a staffing requirement" 200 "$(request PUT "/departments/$DE
 check "planner removes the staffing requirement" 204 "$(request DELETE "/departments/$DEPARTMENT_ID/staffing-requirements/MORNING" "$PLANNER_TOKEN")"
 check "admin removes the temporary department" 204 "$(request DELETE "/departments/$DEPARTMENT_ID" "$ADMIN_TOKEN")"
 
-echo "== Known gap BR-A03: ownership of availability is not checked yet"
+echo "== Ownership of availability (BR-A03)"
 check "admin records leave for the planner" 201 "$(request POST /availabilities "$ADMIN_TOKEN" "{\"employeeId\":$PLANNER_ID,\"startsAt\":\"2027-01-05T08:00:00+02:00\",\"endsAt\":\"2027-01-05T16:00:00+02:00\",\"type\":\"LEAVE\"}")"
 AVAILABILITY_ID="$(field '["id"]')"
-status="$(request DELETE "/availabilities/$AVAILABILITY_ID" "$EMPLOYEE_TOKEN")"
-if [ "$status" = 403 ]; then
-  echo "PASS  employee cannot delete someone else's availability (403), the gap is fixed"
-  request DELETE "/availabilities/$AVAILABILITY_ID" "$ADMIN_TOKEN" >/dev/null
-else
-  echo "GAP   employee deleted someone else's availability ($status), should be 403 once BR-A03 is enforced"
-  gaps=$((gaps + 1))
-  if [ "$status" != 204 ]; then request DELETE "/availabilities/$AVAILABILITY_ID" "$ADMIN_TOKEN" >/dev/null; fi
-fi
+check "employee cannot delete someone else's availability" 403 "$(request DELETE "/availabilities/$AVAILABILITY_ID" "$EMPLOYEE_TOKEN")"
+check "employee cannot change someone else's availability" 403 "$(request PATCH "/availabilities/$AVAILABILITY_ID" "$EMPLOYEE_TOKEN" '{"type":"AVAILABLE"}')"
+check "employee cannot declare availability for someone else" 403 "$(request POST /availabilities "$EMPLOYEE_TOKEN" "{\"employeeId\":$PLANNER_ID,\"startsAt\":\"2027-01-06T08:00:00+02:00\",\"endsAt\":\"2027-01-06T16:00:00+02:00\",\"type\":\"LEAVE\"}")"
+check "employee cannot list someone else's availability" 403 "$(request GET "/availabilities?employeeId=$PLANNER_ID" "$EMPLOYEE_TOKEN")"
+check "employee declares its own availability" 201 "$(request POST /availabilities "$EMPLOYEE_TOKEN" "{\"employeeId\":$EMPLOYEE_ID,\"startsAt\":\"2027-01-07T08:00:00+02:00\",\"endsAt\":\"2027-01-07T16:00:00+02:00\",\"type\":\"AVAILABLE\"}")"
+OWN_ID="$(field '["id"]')"
+request GET /availabilities "$EMPLOYEE_TOKEN" >/dev/null
+check "employee sees only its own availability" "$EMPLOYEE_ID" "$(owners)"
+request GET /availabilities "$PLANNER_TOKEN" >/dev/null
+check "planner without a department sees only its own availability" "$PLANNER_ID" "$(owners)"
+check "employee deletes its own availability" 204 "$(request DELETE "/availabilities/$OWN_ID" "$EMPLOYEE_TOKEN")"
+# Clean up whatever is left, so the next run starts from the same state.
+request DELETE "/availabilities/$AVAILABILITY_ID" "$ADMIN_TOKEN" >/dev/null
+request DELETE "/availabilities/$OWN_ID" "$ADMIN_TOKEN" >/dev/null
 
 rm -f "$BODY"
-echo "== Result: $failures failed, $gaps known gap(s)"
+echo "== Result: $failures failed"
 [ "$failures" -eq 0 ]
