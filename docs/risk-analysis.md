@@ -61,7 +61,10 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Input validation | After the fixes, the 19 requests that had given 500 or a moved date return 400, and the server logs no error | re-run of the exploratory requests |
 | Concurrency | 10 parallel identical availability requests stored 2 to 3 overlapping rows in 4 of 5 rounds | exploratory testing, F-05 |
 | Manual requests | All 30 requests in `apps/backend/http/api.http` return the status code written next to them | run of the request file against the API |
-| Unit tests | 111 tests pass across 22 spec files | `npm test` |
+| Hard constraints | Every boundary of BR-H01 to BR-H07 and BR-T03 in `scheduling-engine.md` has a unit test, including real time rest and weekly hours across both daylight saving changes | 48 Vitest tests in `src/scheduling` |
+| Hard constraints | 11 deliberate mistakes in the checks, such as `<` changed to `<=` for the rest period, were each caught by at least one test | mutation check by hand |
+| Qualification expiry | An expired qualification was shown as valid until 03:00 Helsinki time because dates were compared in UTC. Fixed, and the new tests fail against the old code | `employees.qualification-time.spec.ts` |
+| Unit tests | 162 tests pass across 30 spec files | `npm test` |
 
 ## How this document will grow
 
