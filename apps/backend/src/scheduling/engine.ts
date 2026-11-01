@@ -50,7 +50,8 @@ function orderShifts(input: EngineInput, plan: readonly EngineAssignment[]): Eng
     .sort(
       (a, b) =>
         Number(b.requirements.length > 0) - Number(a.requirements.length > 0) ||
-        (scarcity.get(a.id) ?? 0) - (scarcity.get(b.id) ?? 0) ||
+        // Every shift of the input has an entry, so the lookups below always find one.
+        scarcity.get(a.id)! - scarcity.get(b.id)! ||
         Number(b.type === 'NIGHT') - Number(a.type === 'NIGHT') ||
         a.startsAt.getTime() - b.startsAt.getTime() ||
         a.id - b.id
