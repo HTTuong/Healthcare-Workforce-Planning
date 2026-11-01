@@ -6,12 +6,13 @@ import { AvailabilitiesController } from '../availabilities/availabilities.contr
 import { DepartmentsController } from '../departments/departments.controller.js';
 import { EmployeesController } from '../employees/employees.controller.js';
 import { QualificationsController } from '../qualifications/qualifications.controller.js';
+import { SchedulesController } from '../schedules/schedules.controller.js';
 import { ShiftsController } from '../shifts/shifts.controller.js';
 import { StaffingRequirementsController } from '../staffing-requirements/staffing-requirements.controller.js';
 import { AuthController } from './auth.controller.js';
 import type { RoleName } from './auth.types.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
-import { ANY_ROLE, SCHEDULING_ROLES, STAFF_ROLES } from './role-sets.js';
+import { ANY_ROLE, APPROVAL_ROLES, SCHEDULING_ROLES, STAFF_ROLES } from './role-sets.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
 const controllers = [
@@ -22,7 +23,8 @@ const controllers = [
   QualificationsController,
   EmployeesController,
   ShiftsController,
-  AvailabilitiesController
+  AvailabilitiesController,
+  SchedulesController
 ];
 
 const reflector = new Reflector();
@@ -51,6 +53,7 @@ function readRoutes(): Record<string, string> {
 const ANY = ANY_ROLE.join(',');
 const STAFF = STAFF_ROLES.join(',');
 const SCHEDULING = SCHEDULING_ROLES.join(',');
+const APPROVAL = APPROVAL_ROLES.join(',');
 const staffing = '/departments/:departmentId/staffing-requirements';
 
 // The permission table from architecture.md, written once as data. A new route must be added here.
@@ -85,7 +88,19 @@ const expected: Record<string, string> = {
   'GET /availabilities': ANY,
   'POST /availabilities': ANY,
   'PATCH /availabilities/:id': ANY,
-  'DELETE /availabilities/:id': ANY
+  'DELETE /availabilities/:id': ANY,
+  'GET /schedules': ANY,
+  'GET /schedules/:id': ANY,
+  'GET /schedules/:id/check': STAFF,
+  'POST /schedules': SCHEDULING,
+  'DELETE /schedules/:id': SCHEDULING,
+  'POST /schedules/:id/generate': SCHEDULING,
+  'POST /schedules/:id/assignments': SCHEDULING,
+  'DELETE /schedules/:id/assignments/:assignmentId': SCHEDULING,
+  'POST /schedules/:id/submit': SCHEDULING,
+  'POST /schedules/:id/approve': APPROVAL,
+  'POST /schedules/:id/reject': APPROVAL,
+  'POST /schedules/:id/publish': APPROVAL
 };
 
 describe('role matrix', () => {
