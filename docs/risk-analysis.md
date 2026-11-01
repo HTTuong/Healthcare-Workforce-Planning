@@ -67,7 +67,9 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Scheduling engine | On 300 random inputs the engine never adds an assignment that breaks an employee level rule, reports exactly what the independent validation finds, never staffs a shift above its headcount, and gives the same schedule whatever the order of the input | `engine.properties.spec.ts` |
 | Scheduling engine | Compared with an exhaustive search on 3746 small inputs with many requirements (499 with a complete schedule), the engine missed 10 complete schedules (2.0 %), down from 45 (9.0 %) with a fixed order. Each miss shows as BR-H06, never as a broken rule | exhaustive search, known greedy limit in `engine.spec.ts` |
 | Performance | One department with 100 shifts and 50 employees is planned in 0.66 s, down from 17 s before the checks cached time zone results, with identical output on 1000 random inputs | timing run and comparison of both versions |
-| Unit tests | 180 tests pass across 32 spec files | `npm test` |
+| Soft scores | The fairness and workload scores fall to 50 when one of two equal employees gets every night or all the work, and both are measured relative to contract hours | `soft-scores.spec.ts` |
+| Soft scores | On 300 random inputs the current ranking raises fairness from 62.0 to 76.8 and workload from 69.5 to 91.6 compared with choosing by id only, while preference stays low (33.3 against 35.3), which the weights of day 18/11 must address | baseline run |
+| Unit tests | 200 tests pass across 34 spec files | `npm test` |
 
 ## How this document will grow
 
