@@ -1,6 +1,6 @@
 import type { EngineAssignment, EngineEmployee, EngineInput, EngineResult, EngineShift } from './engine.types.js';
 import { checkCandidate, hasValidQualification, shiftInPeriod, validateSchedule } from './hard-constraints.js';
-import { minutesBetween } from './local-time.js';
+import { qualityReport } from './soft-scores.js';
 
 // Priority based, multi pass assignment (docs/scheduling-engine.md).
 // This is a greedy heuristic, not a constraint solver. That is a deliberate engineering decision: every assignment can
@@ -151,9 +151,12 @@ function fillHeadcount(input: EngineInput, plan: EngineAssignment[], ordered: re
 }
 
 /**
- * Orders the candidates who already passed the hard checks. A simple first version of the soft goals, replaced by the
- * scoring of days 17/11 and 18/11: cover the most open requirements, the lowest load compared with the contract
- * (BR-S03, BR-S04), an AVAILABLE preference (BR-S01), the fewest night shifts for a night shift (BR-S02), then the id.
+ * Orders the candidates who already passed the hard checks:
+ * 1. the most open requirements of the shift covered, because one person covering two keeps a place free;
+ * 2. the highest schedule quality score after the assignment (BR-S01 to BR-S04, weights in soft-scores.ts);
+ * 3. a matching AVAILABLE record (BR-S01), because the preference score leaves out employees who never stated one,
+ *    so it cannot tell a match from a neutral choice;
+ * 4. the lowest id, so the result is the same on every run.
  */
 export function rankCandidates(
   input: EngineInput,
@@ -163,31 +166,28 @@ export function rankCandidates(
   unmetQualificationIds: readonly number[]
 ): EngineEmployee[] {
   const { timeZone } = input.rules;
-  const keyOf = (employee: EngineEmployee) => {
-    const own = plan.filter((assignment) => assignment.employeeId === employee.id);
-    const ownShifts = own
-      .map((assignment) => input.shifts.find((candidate) => candidate.id === assignment.shiftId))
-      .filter((candidate): candidate is EngineShift => candidate !== undefined);
-    const minutes = ownShifts.reduce((sum, own) => sum + minutesBetween(own.startsAt, own.endsAt), 0);
-    const prefers = input.availability.some(
-      (record) =>
-        record.employeeId === employee.id &&
-        record.type === 'AVAILABLE' &&
-        record.startsAt <= shift.startsAt &&
-        record.endsAt >= shift.endsAt
-    );
-    return {
-      covers: unmetQualificationIds.filter((id) => hasValidQualification(employee, id, shift, timeZone)).length,
-      load: (minutes + 1) / (employee.contractMinutesPerWeek + 1),
-      prefers: prefers ? 0 : 1,
-      nights: shift.type === 'NIGHT' ? ownShifts.filter((own) => own.type === 'NIGHT').length : 0
-    };
-  };
-  const keys = new Map(candidates.map((employee) => [employee.id, keyOf(employee)]));
+  const keys = new Map(
+    candidates.map((employee) => [
+      employee.id,
+      {
+        covers: unmetQualificationIds.filter((id) => hasValidQualification(employee, id, shift, timeZone)).length,
+        quality: qualityReport(input, [...plan, { shiftId: shift.id, employeeId: employee.id }]).quality,
+        prefers: input.availability.some(
+          (record) =>
+            record.employeeId === employee.id &&
+            record.type === 'AVAILABLE' &&
+            record.startsAt <= shift.startsAt &&
+            record.endsAt >= shift.endsAt
+        )
+          ? 0
+          : 1
+      }
+    ])
+  );
   return [...candidates].sort((a, b) => {
     const ka = keys.get(a.id)!;
     const kb = keys.get(b.id)!;
-    return kb.covers - ka.covers || ka.load - kb.load || ka.prefers - kb.prefers || ka.nights - kb.nights || byId(a, b);
+    return kb.covers - ka.covers || kb.quality - ka.quality || ka.prefers - kb.prefers || byId(a, b);
   });
 }
 
