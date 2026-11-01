@@ -1,9 +1,11 @@
 import type {
   EngineAssignment,
+  EngineAvailability,
   EngineEmployee,
   EngineInput,
   EngineShift,
   HardRuleId,
+  LocalDate,
   Violation
 } from './engine.types.js';
 import { addDays, localDateOf, minutesBetween, nextWeekStart, startOfLocalDate, weekStartOf } from './local-time.js';
@@ -33,24 +35,86 @@ function describe(interval: Interval): string {
     : `shift ${interval.shiftId}`;
 }
 
+/**
+ * Lookups and time zone results built once per input object. The algorithm calls the checks thousands of times, and
+ * a time zone conversion is far slower than the rule itself. The input must therefore not change during a run.
+ */
+interface InputIndex {
+  shifts: Map<number, EngineShift>;
+  employees: Map<number, EngineEmployee>;
+  availability: Map<number, EngineAvailability[]>;
+  busy: Map<number, Interval[]>;
+  periodStart: Date;
+  periodEnd: Date;
+  /** The weeks each shift touches, as [Monday 00:00, next Monday 00:00). */
+  weeks: Map<number, Interval[]>;
+  /** For each validUntil date, the local midnight after it. */
+  expiry: Map<LocalDate, Date>;
+}
+
+const indexes = new WeakMap<EngineInput, InputIndex>();
+
+function groupBy<T extends { employeeId: number }>(items: readonly T[]): Map<number, T[]> {
+  const groups = new Map<number, T[]>();
+  for (const item of items) groups.set(item.employeeId, [...(groups.get(item.employeeId) ?? []), item]);
+  return groups;
+}
+
+function indexOf(input: EngineInput): InputIndex {
+  let index = indexes.get(input);
+  if (!index) {
+    const { timeZone } = input.rules;
+    index = {
+      shifts: new Map(input.shifts.map((shift) => [shift.id, shift])),
+      employees: new Map(input.employees.map((employee) => [employee.id, employee])),
+      availability: groupBy(input.availability),
+      busy: new Map(
+        [...groupBy(input.busy)].map(([employeeId, intervals]) => [
+          employeeId,
+          intervals.map((interval) => ({ startsAt: interval.startsAt, endsAt: interval.endsAt }))
+        ])
+      ),
+      periodStart: startOfLocalDate(input.period.start, timeZone),
+      periodEnd: startOfLocalDate(addDays(input.period.end, 1), timeZone),
+      weeks: new Map(),
+      expiry: new Map()
+    };
+    indexes.set(input, index);
+  }
+  return index;
+}
+
+function weeksOf(input: EngineInput, shift: EngineShift): Interval[] {
+  const index = indexOf(input);
+  let weeks = index.weeks.get(shift.id);
+  if (!weeks) {
+    weeks = [];
+    for (let weekStart = weekStartOf(shift.startsAt, input.rules.timeZone); weekStart < shift.endsAt; ) {
+      const weekEnd = nextWeekStart(weekStart, input.rules.timeZone);
+      weeks.push({ startsAt: weekStart, endsAt: weekEnd });
+      weekStart = weekEnd;
+    }
+    index.weeks.set(shift.id, weeks);
+  }
+  return weeks;
+}
+
 function findShift(input: EngineInput, shiftId: number): EngineShift {
-  const shift = input.shifts.find((candidate) => candidate.id === shiftId);
+  const shift = indexOf(input).shifts.get(shiftId);
   if (!shift) throw new Error(`Unknown shift ${shiftId}`);
   return shift;
 }
 
 function findEmployee(input: EngineInput, employeeId: number): EngineEmployee {
-  const employee = input.employees.find((candidate) => candidate.id === employeeId);
+  const employee = indexOf(input).employees.get(employeeId);
   if (!employee) throw new Error(`Unknown employee ${employeeId}`);
   return employee;
 }
 
 /** BR-T03: the shift starts at or after the first local midnight of the period and ends by the midnight after it. */
 export function shiftInPeriod(input: EngineInput, shift: EngineShift): boolean {
-  const { timeZone } = input.rules;
-  const start = startOfLocalDate(input.period.start, timeZone);
-  const end = startOfLocalDate(addDays(input.period.end, 1), timeZone);
-  return shift.startsAt >= start && shift.endsAt <= end;
+  const { periodStart, periodEnd } = indexOf(input);
+  return shift.startsAt >= periodStart && shift.endsAt <= periodEnd;
 }
 
 /** BR-H01: the employee holds the qualification and it is valid for the whole shift. */
@@ -63,7 +127,20 @@ export function hasValidQualification(
   const held = employee.qualifications.find((qualification) => qualification.qualificationId === qualificationId);
   if (!held) return false;
   if (held.validUntil === null) return true;
-  return shift.endsAt <= startOfLocalDate(addDays(held.validUntil, 1), timeZone);
+  return shift.endsAt <= midnightAfter(held.validUntil, timeZone);
+}
+
+const expiryCache = new Map<string, Date>();
+
+/** Local midnight after a date. Cached, because the same few expiry dates are checked over and over. */
+function midnightAfter(date: LocalDate, timeZone: string): Date {
+  const key = `${timeZone}|${date}`;
+  let instant = expiryCache.get(key);
+  if (!instant) {
+    instant = startOfLocalDate(addDays(date, 1), timeZone);
+    expiryCache.set(key, instant);
+  }
+  return instant;
 }
 
 /** The work of one employee that counts for overlap, rest and weekly hours, except the given shift. */
@@ -74,10 +151,7 @@ function workOf(input: EngineInput, plan: readonly EngineAssignment[], employeeI
       const shift = findShift(input, assignment.shiftId);
       return { startsAt: shift.startsAt, endsAt: shift.endsAt, shiftId: shift.id };
     });
-  const busy = input.busy
-    .filter((interval) => interval.employeeId === employeeId)
-    .map((interval) => ({ startsAt: interval.startsAt, endsAt: interval.endsAt }));
-  return [...assigned, ...busy];
+  return [...assigned, ...(indexOf(input).busy.get(employeeId) ?? [])];
 }
 
 /**
@@ -110,8 +184,8 @@ export function checkCandidate(
     }
   }
 
-  for (const record of input.availability) {
-    if (record.employeeId === employeeId && record.type !== 'AVAILABLE' && overlaps(record, shift)) {
+  for (const record of indexOf(input).availability.get(employeeId) ?? []) {
+    if (record.type !== 'AVAILABLE' && overlaps(record, shift)) {
       add(
         'BR-H02',
         `Employee ${employeeId} is ${record.type} from ${record.startsAt.toISOString()} to ${record.endsAt.toISOString()}`
@@ -136,17 +210,14 @@ export function checkCandidate(
   }
 
   // A shift that crosses Monday 00:00 is split between the two weeks it touches.
-  for (let weekStart = weekStartOf(shift.startsAt, timeZone); weekStart < shift.endsAt; ) {
-    const weekEnd = nextWeekStart(weekStart, timeZone);
-    const week = { startsAt: weekStart, endsAt: weekEnd };
+  for (const week of weeksOf(input, shift)) {
     const minutes = [shift, ...work].reduce((sum, interval) => sum + overlapMinutes(interval, week), 0);
     if (minutes > maxWeeklyMinutes) {
       add(
         'BR-H04',
-        `Employee ${employeeId} would work ${minutes} minutes in the week of ${localDateOf(weekStart, timeZone)}, ${maxWeeklyMinutes} allowed`
+        `Employee ${employeeId} would work ${minutes} minutes in the week of ${localDateOf(week.startsAt, timeZone)}, ${maxWeeklyMinutes} allowed`
       );
     }
-    weekStart = weekEnd;
   }
 
   return violations;
