@@ -2,7 +2,7 @@
 
 This document defines what the scheduling engine must do before any of it is written: the exact meaning of every hard constraint, including its boundaries, the shape of the algorithm, and how each rule will be tested. The rules themselves are listed in `business-rules.md`. This document makes them precise enough to test.
 
-Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, the assignment algorithm in `engine.ts`, and the soft scores BR-S01 to BR-S03 in `soft-scores.ts`. Overtime, the weights and the combined quality score (day 18/11) follow.
+Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, the assignment algorithm in `engine.ts`, and the soft scores and the schedule quality score in `soft-scores.ts`.
 
 ## Boundaries
 
@@ -80,7 +80,7 @@ The algorithm is priority based and runs in several passes. It is a greedy heuri
 4. Pass 2, headcount: fill one remaining place at a time, always on the open shift with the least slack (candidates minus open places), again with the order of step 2 to break a tie.
 5. Pass 3, report: run the schedule validation and return its violations.
 
-Candidates are ranked by soft goals, defined in detail on days 17/11 and 18/11: fewest minutes assigned so far compared with the contract (BR-S03, BR-S04), a matching AVAILABLE preference (BR-S01), fewest night and weekend shifts so far (BR-S02), and finally the lowest employee id.
+Candidates are ranked by the most open requirements of the shift they cover, then the highest schedule quality score after the assignment (see Soft scores), then a matching AVAILABLE record, and finally the lowest employee id. The AVAILABLE key is needed because the preference score leaves out employees who never stated a preference, so the score cannot tell a match from a neutral choice.
 
 A small example of what the greedy approach can miss: two shifts at the same time, one needs a qualification that only Aino holds, the other needs anyone. If the second shift were staffed first, it could take Aino and leave the first one unfilled. Ordering the hardest shift first avoids this case, but not every case of this kind.
 
@@ -105,6 +105,7 @@ Each soft goal gets a score from 0 to 100, where 100 is the best. The scores are
 | BR-S01 preference | Share of assignments fully inside an AVAILABLE record, counting only employees who marked some AVAILABLE time | Someone who never stated a preference cannot be pleased or disappointed by an assignment |
 | BR-S02 fairness | 100 x (1 - Gini) of night and weekend shifts per contract minute | The Gini coefficient is 0 for a perfectly even spread and does not depend on the unit, and dividing by contract minutes keeps part time staff from looking short changed |
 | BR-S03 workload | 100 x (1 - Gini) of assigned real minutes per contract minute | Real minutes, so a 9 hour night over a daylight saving change weighs as 9 hours |
+| BR-S04 overtime | Share of assigned minutes that are not overtime, counted per local week above the contract | Contracts are weekly, and busy time outside the schedule fills the week first, so the schedule is not blamed for overtime it did not add |
 
 Only active employees with contract hours take part in BR-S02 and BR-S03. An empty schedule scores 100 on all three, because nobody is favoured.
 
@@ -117,7 +118,24 @@ Baseline of the current ranking, as the average over 300 seeded random inputs, a
 | 40 shifts, 12 employees | current | 10.9 | 83.2 | 96.7 |
 | 40 shifts, 12 employees | id only | 7.9 | 61.7 | 70.6 |
 
-The ranking already improves fairness and workload a lot. Preference stays low, and on small inputs even below the id only version, because AVAILABLE only breaks ties after the load. The weights of day 18/11 must fix this.
+The ranking already improves fairness and workload a lot. Preference stays low, and on small inputs even below the id only version, because AVAILABLE only breaks ties after the load.
+
+### Quality score
+
+The quality score is the weighted average of the four scores, with the weights recorded in `business-rules.md` (overtime 0.30, preference 0.25, fairness 0.25, workload 0.20). Since day 18/11 the engine ranks candidates by the quality score the schedule would have after the assignment. Before and after, on the same seeded inputs:
+
+| Inputs | Ranking | Preference | Fairness | Workload | Overtime | Quality | Time per run |
+|---|---|---|---|---|---|---|---|
+| 300 small inputs | previous | 33.3 | 76.8 | 91.6 | 100.0 | 75.8 | 1.6 ms |
+| 300 small inputs | quality | 48.9 | 77.5 | 87.1 | 100.0 | 79.0 | 2.1 ms |
+| 300 inputs, 40 shifts, 12 employees | previous | 10.9 | 83.2 | 96.7 | 99.8 | 72.8 | 36 ms |
+| 300 inputs, 40 shifts, 12 employees | quality | 23.7 | 89.3 | 93.2 | 99.8 | 76.8 | 44 ms |
+| 5 inputs, 100 shifts, 50 employees | previous | 21.2 | 78.0 | 93.6 | 100.0 | 73.5 | 0.69 s |
+| 5 inputs, 100 shifts, 50 employees | quality | 99.2 | 72.1 | 79.7 | 100.0 | 88.8 | 0.87 s |
+
+The quality score rose on every size, mostly through preference. Workload fell, and fairness fell on the largest inputs: that is the trade off the weights set, and a reason to confirm them with the product owner. Coverage did not suffer: on the 3746 inputs of the exhaustive search, the engine missed 10 complete schedules before and after the change. The random inputs give each employee only a few shifts, so the overtime score stays near 100 there, and its behaviour is covered by tests written by hand.
+
+One defect came up while switching: the floating point sums inside the Gini coefficient depended on the order of the employees, so two equal candidates differed by about 1e-16 and the input order decided between them. The property test on input order caught it, and the Gini coefficient now sorts its values before adding them.
 
 ## Test plan
 
@@ -133,7 +151,7 @@ The unit tests live next to the engine and use fixed dates, never the current ti
 | Greedy limits | A fixture where the result has a BR-H06 violation, documented as expected | Vitest |
 | End to end | Generate a schedule through the API and check the rules on what was saved | Playwright, group D |
 
-Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. The soft scores have 17 tests with values worked out by hand and 3 properties on random inputs. All 9 deliberate mistakes in the scores, such as taking the weekend from the UTC date, were caught. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
+Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. The soft scores have 17 tests with values worked out by hand and 3 properties on random inputs. All 9 deliberate mistakes in the scores, such as taking the weekend from the UTC date, were caught. Overtime and the quality score have 12 more tests, and all 10 deliberate mistakes in them and in the new ranking were caught. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
 
 ## Open questions
 
