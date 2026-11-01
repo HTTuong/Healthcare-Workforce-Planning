@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { MAX_INT32 } from '../common/parse.js';
+import { DEFAULT_RULES } from '../scheduling/engine.types.js';
+import { localDateOf } from '../scheduling/local-time.js';
 
 const ROLES = ['ADMIN', 'PLANNER', 'MANAGER', 'EMPLOYEE'] as const;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,9 +81,11 @@ function parseValidUntil(value: unknown): Date | null {
 }
 
 // A qualification with no expiry never expires. Otherwise it counts through the whole validUntil day (BR-H01).
+// validUntil is a calendar date (stored at 00:00 UTC), while "today" is the local date in Helsinki. Comparing with
+// the UTC date of now kept an expired qualification valid for up to 3 hours after local midnight.
 export function isQualificationValid(validUntil: Date | null, today: Date = new Date()): boolean {
   if (validUntil === null) return true;
-  return validUntil.toISOString().slice(0, 10) >= today.toISOString().slice(0, 10);
+  return validUntil.toISOString().slice(0, 10) >= localDateOf(today, DEFAULT_RULES.timeZone);
 }
 
 @Injectable()
