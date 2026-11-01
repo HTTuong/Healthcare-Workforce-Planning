@@ -1,0 +1,205 @@
+# Healthcare Workforce Planning API: requests for manual and exploratory testing.
+# Open in VS Code with the REST Client extension (humao.rest-client) and click "Send Request" above a request.
+# Before you start: docker compose up -d, npm run start:dev, and npm run create-admin (see the backend README).
+# Run "Log in as admin" first. Requests below reuse the token and the ids created along the way.
+
+@baseUrl = http://localhost:3000
+@adminEmail = admin@example.com
+@adminPassword = Admin-Password-123!
+@token = {{login.response.body.accessToken}}
+@departmentId = {{createDepartment.response.body.id}}
+@qualificationId = {{createQualification.response.body.id}}
+@employeeId = {{createEmployee.response.body.id}}
+@shiftId = {{createShift.response.body.id}}
+@availabilityId = {{createAvailability.response.body.id}}
+
+### Public root. Expect 200 without a token.
+GET {{baseUrl}}/
+
+### Log in as admin. Expect 200 and an accessToken.
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "{{adminEmail}}", "password": "{{adminPassword}}" }
+
+### Who am I. Expect 200 with sub and role ADMIN.
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{token}}
+
+### Wrong password. Expect 401 "Invalid email or password".
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{ "email": "{{adminEmail}}", "password": "wrong-password-xx" }
+
+### No token. Expect 401.
+GET {{baseUrl}}/departments
+
+# == Departments
+
+### Create a department. Expect 201. Change the code if it already exists (409).
+# @name createDepartment
+POST {{baseUrl}}/departments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "code": "MAN-1", "name": "Manual testing ward" }
+
+### List departments. Expect 200.
+GET {{baseUrl}}/departments
+Authorization: Bearer {{token}}
+
+### Rename the department. Expect 200.
+PATCH {{baseUrl}}/departments/{{departmentId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "Manual testing ward, renamed" }
+
+### Set the night minimum headcount. Expect 200. Sending it again only changes the number.
+PUT {{baseUrl}}/departments/{{departmentId}}/staffing-requirements/NIGHT
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "minHeadcount": 3 }
+
+### List staffing requirements. Expect 200 with one NIGHT row.
+GET {{baseUrl}}/departments/{{departmentId}}/staffing-requirements
+Authorization: Bearer {{token}}
+
+# == Qualifications and employees
+
+### Create a qualification. Expect 201. Change the code if it already exists (409).
+# @name createQualification
+POST {{baseUrl}}/qualifications
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "code": "MAN-RN", "name": "Registered Nurse (manual test)" }
+
+### Create an employee in the department. Expect 201. Change the email if it already exists (409).
+# @name createEmployee
+POST {{baseUrl}}/employees
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "firstName": "Manu", "lastName": "Tester", "email": "manual.tester@example.com", "role": "EMPLOYEE", "departmentId": {{departmentId}} }
+
+### Give the employee the qualification until a date. Expect 200 with "valid": true.
+PUT {{baseUrl}}/employees/{{employeeId}}/qualifications/{{qualificationId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "validUntil": "2027-12-31" }
+
+### Read the employee. Expect 200, the qualification listed, and no passwordHash field.
+GET {{baseUrl}}/employees/{{employeeId}}
+Authorization: Bearer {{token}}
+
+### Set the employee's password. Expect 204.
+PUT {{baseUrl}}/auth/password/{{employeeId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "password": "Manual-Password-123!" }
+
+# == Shifts
+
+### Night shift across the end of daylight saving time. Expect 201, stored as 19:00Z to 04:00Z (9 hours).
+# @name createShift
+POST {{baseUrl}}/shifts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "departmentId": {{departmentId}},
+  "type": "NIGHT",
+  "startsAt": "2027-10-30T22:00:00+03:00",
+  "endsAt": "2027-10-31T06:00:00+02:00",
+  "requiredHeadcount": 2,
+  "requirements": [{ "qualificationId": {{qualificationId}}, "count": 1 }]
+}
+
+### Read the shift back. Expect 200 with the requirement and its qualification.
+GET {{baseUrl}}/shifts/{{shiftId}}
+Authorization: Bearer {{token}}
+
+# == Availability
+
+### Record leave for the employee. Expect 201.
+# @name createAvailability
+POST {{baseUrl}}/availabilities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "employeeId": {{employeeId}}, "startsAt": "2027-11-02T08:00:00+02:00", "endsAt": "2027-11-02T16:00:00+02:00", "type": "LEAVE" }
+
+### Overlapping leave for the same employee. Expect 409.
+POST {{baseUrl}}/availabilities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "employeeId": {{employeeId}}, "startsAt": "2027-11-02T12:00:00+02:00", "endsAt": "2027-11-02T20:00:00+02:00", "type": "AVAILABLE" }
+
+### Availability of the employee. Expect 200 with one row.
+GET {{baseUrl}}/availabilities?employeeId={{employeeId}}
+Authorization: Bearer {{token}}
+
+# == Exploratory checks (findings F-01 to F-06)
+
+### F-01 department without a name. Expect 400, not 500.
+POST {{baseUrl}}/departments
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "code": "NONAME" }
+
+### F-02 id above the integer range. Expect 400, not 500.
+GET {{baseUrl}}/departments/2147483648
+Authorization: Bearer {{token}}
+
+### F-02 headcount above the integer range. Expect 400, not 500.
+POST {{baseUrl}}/shifts
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "departmentId": {{departmentId}}, "type": "NIGHT", "startsAt": "2027-11-05T22:00:00+02:00", "endsAt": "2027-11-06T06:00:00+02:00", "requiredHeadcount": 3000000000 }
+
+### F-03 30 February. Expect 400, not a leave on 2 March.
+POST {{baseUrl}}/availabilities
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "employeeId": {{employeeId}}, "startsAt": "2027-02-30T08:00:00+02:00", "endsAt": "2027-02-30T16:00:00+02:00", "type": "LEAVE" }
+
+### F-04 deactivate the employee. Expect 200. A token issued before this is refused from now on (401).
+PATCH {{baseUrl}}/employees/{{employeeId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "active": false }
+
+### F-04 reactivate the employee. Expect 200.
+PATCH {{baseUrl}}/employees/{{employeeId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "active": true }
+
+### F-06 response headers. Expect no X-Powered-By header.
+GET {{baseUrl}}/
+
+# == Clean up
+
+### Delete the leave. Expect 204.
+DELETE {{baseUrl}}/availabilities/{{availabilityId}}
+Authorization: Bearer {{token}}
+
+### Delete the shift. Expect 204.
+DELETE {{baseUrl}}/shifts/{{shiftId}}
+Authorization: Bearer {{token}}
+
+### Delete the department. Expect 409 while the employee still belongs to it, which is the intended protection.
+DELETE {{baseUrl}}/departments/{{departmentId}}
+Authorization: Bearer {{token}}
