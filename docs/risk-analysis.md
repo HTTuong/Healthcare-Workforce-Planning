@@ -17,7 +17,7 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 | R-SCH-05 | Overlapping shifts or too many weekly hours for one person | High | Rejected | BR-H03, BR-H04 | Group D, group I |
 | R-TIME-01 | Night shifts across midnight or a daylight saving change are measured wrong, so rest periods and weekly hours are wrong | High | Durations use real elapsed UTC time | BR-T01, BR-T02 | Vitest tests with fixed dates around 25/10/2026 and 28/03/2027. Availability input without a UTC offset is rejected with 400, and ranges are compared as absolute instants (verified with curl on 25/10/2026) |
 | R-WF-01 | A schedule is published without approval, or changed after approval | High | The API refuses the transition or the edit | BR-W01, BR-W02 | Group F |
-| R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix. The matrix is a unit test that reads the decorators of every route (`role-matrix.spec.ts`), and `scripts/rbac-smoke.sh` checks the roles against the running API. Known gap: ownership (BR-A03) is not enforced yet, so an employee can delete someone else's availability |
+| R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix. The matrix is a unit test that reads the decorators of every route (`role-matrix.spec.ts`), and `scripts/rbac-smoke.sh` checks the roles against the running API. Ownership of availability (BR-A03) is enforced by `AvailabilityAccess` and covered by unit tests and the smoke test |
 | R-CONS-01 | The UI and the API disagree, for example the UI hides a button but the API still allows the action | Medium | Permissions are enforced in the API, the UI only reflects them | BR-A02 | Group H |
 | R-CONC-01 | Two planners edit or generate the same schedule at the same time and double-book an employee | Medium | One request wins, the other gets a conflict error | BR-H03 | Concurrency test, approach reused from Project 1. Known gap: availability overlap is checked before the insert, so two parallel requests can both pass. A database level exclusion constraint is planned |
 | R-OPT-01 | The optimizer produces a valid but unfair schedule, for example the same person always gets night shifts | Medium | Fairness is visible in the quality score | BR-S02, BR-S03 | Group E |
@@ -27,7 +27,7 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 
 Only behavior confirmed by a real run is listed here. Each row names the run that showed it.
 
-The authentication and role rows come from a run of the built API against PostgreSQL 16 in a scratch environment on 2026-11-01, and are repeated on the development machine with `npm run rbac-smoke`.
+The authentication, role and ownership rows come from runs of the built API against PostgreSQL 16 in a scratch environment on 2026-11-01, and are repeated on the development machine with `npm run rbac-smoke`.
 
 | Area | Observed behavior | Evidence |
 |---|---|---|
@@ -51,8 +51,10 @@ The authentication and role rows come from a run of the built API against Postgr
 | Authentication | The API refuses to start when JWT_SECRET is missing or shorter than 32 characters | start-up run with an empty and a short secret |
 | Roles | An employee cannot list employees, create a shift or set a password (403), a manager cannot create a shift or a department, and a planner cannot create a department but can manage staffing requirements | `rbac-smoke.sh` |
 | Roles | Every route declares a policy and the declared roles match the permission table, and removing one decorator turns the test red | `role-matrix.spec.ts`, checked by deleting the decorator of POST /qualifications |
-| Known gap | An employee can delete another employee's availability (204, should be 403) because ownership is not checked yet (BR-A03) | `rbac-smoke.sh` |
-| Unit tests | 78 tests pass across 14 spec files | `npm test` |
+| Ownership | Before the fix the smoke test failed 6 checks: an employee could delete (204) and create (201) availability for someone else and could list everyone's records | `rbac-smoke.sh` against the API before the change |
+| Ownership | After the fix an employee gets 403 when it deletes, changes, creates or lists someone else's availability, and sees only its own records | `rbac-smoke.sh`, two runs |
+| Ownership | A planner in a department sees only that department's availability and gets an empty list for an employee outside it, a planner or manager without a department sees only its own, and an admin sees everything | curl with a temporary department |
+| Unit tests | 89 tests pass across 16 spec files | `npm test` |
 
 ## How this document will grow
 
