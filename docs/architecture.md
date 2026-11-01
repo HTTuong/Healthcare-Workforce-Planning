@@ -112,4 +112,5 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 - Ids in paths and queries go through `ParseIdPipe` (1 to 2147483647), and integers in bodies through `parsePositiveInt`, so a number that does not fit in a PostgreSQL integer gives 400 instead of 500.
 - Timestamps are checked part by part: a day that does not exist, such as 30 February, and the hour 24 are rejected instead of being moved by JavaScript.
 - Every authenticated request loads the account through `ActiveUserGuard`: a deactivated account gets 401, and the role stored in the database replaces the role in the token. This costs one small query per request.
+- The scheduling engine must keep 100 % test coverage (`npm run test:engine` fails below it), and an architecture test keeps NestJS, Prisma, the clock and randomness out of it.
 - Not done yet: rate limiting of failed logins, logging out a single token before it expires, a database constraint against parallel overlapping availability (F-05), and upper limits for shift length and headcount, which need product decisions.
