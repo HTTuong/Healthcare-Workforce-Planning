@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import type { AvailabilityScope } from './availability-access.service.js';
 
 const TYPES = ['AVAILABLE', 'UNAVAILABLE', 'LEAVE'] as const;
 type AvailabilityKind = (typeof TYPES)[number];
@@ -46,6 +47,17 @@ export class AvailabilitiesService {
   findAll(employeeId?: number) {
     return this.prisma.availability.findMany({
       where: employeeId === undefined ? {} : { employeeId },
+      orderBy: { startsAt: 'asc' }
+    });
+  }
+
+  // Lists availability inside the scope computed by AvailabilityAccess.
+  findInScope(scope: AvailabilityScope) {
+    return this.prisma.availability.findMany({
+      where: {
+        ...(scope.employeeId === undefined ? {} : { employeeId: scope.employeeId }),
+        ...(scope.departmentId === undefined ? {} : { employee: { departmentId: scope.departmentId } })
+      },
       orderBy: { startsAt: 'asc' }
     });
   }
