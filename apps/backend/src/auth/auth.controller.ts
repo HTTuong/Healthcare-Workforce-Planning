@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Put, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Put, Req } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import { AuthService } from './auth.service.js';
 import type { AuthRequest } from './auth.types.js';
 import { Public } from './public.decorator.js';
@@ -25,7 +26,7 @@ export class AuthController {
   @Roles('ADMIN')
   @Put('password/:employeeId')
   @HttpCode(204)
-  setPassword(@Param('employeeId', ParseIntPipe) employeeId: number, @Body() body: { password?: unknown }) {
+  setPassword(@Param('employeeId', ParseIdPipe) employeeId: number, @Body() body: { password?: unknown }) {
     return this.authService.setPassword(employeeId, body?.password);
   }
 }
