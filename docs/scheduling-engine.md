@@ -2,7 +2,7 @@
 
 This document defines what the scheduling engine must do before any of it is written: the exact meaning of every hard constraint, including its boundaries, the shape of the algorithm, and how each rule will be tested. The rules themselves are listed in `business-rules.md`. This document makes them precise enough to test.
 
-Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`. The assignment algorithm (day 16/11) and soft constraint scoring (days 17/11 and 18/11) follow.
+Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, and the assignment algorithm in `engine.ts`. Soft constraint scoring (days 17/11 and 18/11) follows.
 
 ## Boundaries
 
@@ -76,15 +76,25 @@ The algorithm is priority based and runs in several passes. It is a greedy heuri
 
 1. Validate the input. Shifts outside the period get a BR-T03 violation and are not staffed. Locked assignments are kept and checked like any other.
 2. Order the shifts, hardest first: shifts with qualification requirements before those without, then by the fewest employees who pass the candidate check for the scarcest qualification, then night shifts, then start time, then id.
-3. Pass 1, requirements: for each shift and each of its requirements, assign the best ranked candidates who hold the qualification and pass the candidate check, until the count is met.
-4. Pass 2, headcount: fill the remaining places of each shift with the best ranked candidates who pass the candidate check.
+3. Pass 1, requirements: fill one qualified place at a time, always for the open requirement with the least slack (qualified candidates who pass the candidate check, minus the people still missing). The order of step 2 breaks a tie.
+4. Pass 2, headcount: fill one remaining place at a time, always on the open shift with the least slack (candidates minus open places), again with the order of step 2 to break a tie.
 5. Pass 3, report: run the schedule validation and return its violations.
 
 Candidates are ranked by soft goals, defined in detail on days 17/11 and 18/11: fewest minutes assigned so far compared with the contract (BR-S03, BR-S04), a matching AVAILABLE preference (BR-S01), fewest night and weekend shifts so far (BR-S02), and finally the lowest employee id.
 
 A small example of what the greedy approach can miss: two shifts at the same time, one needs a qualification that only Aino holds, the other needs anyone. If the second shift were staffed first, it could take Aino and leave the first one unfilled. Ordering the hardest shift first avoids this case, but not every case of this kind.
 
-The work grows with shifts times employees times the assignments already made. For one ward and one month (about 100 shifts and 50 employees) this is small, so no optimization is planned.
+The first version filled the shifts in the fixed order of step 2. An exhaustive search on small random inputs showed what that cost, so both passes now pick the place with the least slack. The numbers below come from 3746 small inputs with many requirements, of which 499 have a complete valid schedule:
+
+| Version | Complete schedules missed |
+|---|---|
+| Fixed order in both passes | 45 of 499 (9.0 %) |
+| Least slack in pass 2 only | 18 of 499 (3.6 %) |
+| Least slack in both passes (current) | 10 of 499 (2.0 %) |
+
+Every miss shows as a BR-H06 violation, never as a broken rule. `engine.spec.ts` keeps one of the remaining misses as a documented example, and the two cases the fixed order missed as regression tests.
+
+Choosing by least slack calls the candidate check far more often, and each call converted times between time zones. The checks therefore index the input and cache the time zone results once per input. In the scratch environment one department with 100 shifts and 50 employees went from 17 s to 0.66 s (50 x 25: 0.17 s, 150 x 60: 1.6 s), and the output was identical before and after the change on 1000 random inputs. The input must not change during a run.
 
 ## Test plan
 
@@ -100,7 +110,7 @@ The unit tests live next to the engine and use fixed dates, never the current ti
 | Greedy limits | A fixture where the result has a BR-H06 violation, documented as expected | Vitest |
 | End to end | Generate a schedule through the API and check the rules on what was saved | Playwright, group D |
 
-Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail.
+Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
 
 ## Open questions
 
