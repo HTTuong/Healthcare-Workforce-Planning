@@ -73,6 +73,18 @@ stateDiagram-v2
 
 Only DRAFT and OPTIMIZED schedules can be edited. A schedule that is not APPROVED cannot be published, and an APPROVED or PUBLISHED schedule cannot be changed without going back through the workflow.
 
+The workflow is implemented in `apps/backend/src/schedules` (day 20/11). `schedule-workflow.ts` holds the diagram as one table of actions, start statuses, end status and roles. The controller takes its `@Roles` from that table and the service its allowed statuses, so the diagram, the permission check and the status check cannot drift apart.
+
+| Endpoint | Action | Roles |
+|---|---|---|
+| `POST /schedules` | Create a DRAFT for one department and period | Admin, Planner |
+| `GET /schedules`, `GET /schedules/:id` | Read, with the actions the caller may take next | Every role, employees limited by BR-W04 |
+| `GET /schedules/:id/check` | Hard violations and quality scores of the schedule as it is now | Admin, Planner, Manager |
+| `POST /schedules/:id/generate` | Run the engine around the assignments made by hand | Admin, Planner |
+| `POST /schedules/:id/assignments`, `DELETE /schedules/:id/assignments/:assignmentId`, `DELETE /schedules/:id` | Edit by hand, or delete an editable schedule | Admin, Planner |
+| `POST /schedules/:id/submit` | Send an OPTIMIZED schedule to review | Admin, Planner |
+| `POST /schedules/:id/approve`, `reject`, `publish` | Decide on a schedule in review, publish an approved one | Admin, Manager |
+
 ## Roles and permissions
 
 | Action | Admin | Planner | Manager | Employee |
@@ -99,7 +111,7 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 ## Decisions and open questions
 
 - The scheduling engine uses a priority-based, multi-pass assignment, not an academic constraint solver. This is a deliberate engineering decision: the rules stay readable and testable, at the cost of not always finding the best possible schedule. The design, with the exact rule definitions and the test plan, is in `scheduling-engine.md`.
-- Publishing is done by the manager who approved the schedule. This could also be a separate step for the planner. Decision to confirm before the workflow module (day 20/11).
+- Publishing is done by an admin or a manager, the same roles that approve (decided day 20/11, following the permission table). A planner cannot publish, so a schedule reaches employees only through someone who did not build it, unless an admin does both.
 - Rule values (rest period, maximum hours) are configurable and documented in `business-rules.md` as design assumptions, not as legal advice.
 - The backend uses NestJS 12, which generates an ES module project (`"type": "module"`, imports end in `.js`) with Vitest instead of Jest and oxlint instead of ESLint. Vitest has the same `describe`, `it`, `expect` API as Jest, with `vi.fn()` in place of `jest.fn()`. The tracker says Jest; Vitest is kept because it is the framework default.
 - Node 24 LTS is the required runtime (`.nvmrc`). Node 23 does not run the Nest CLI.
@@ -113,4 +125,11 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 - Timestamps are checked part by part: a day that does not exist, such as 30 February, and the hour 24 are rejected instead of being moved by JavaScript.
 - Every authenticated request loads the account through `ActiveUserGuard`: a deactivated account gets 401, and the role stored in the database replaces the role in the token. This costs one small query per request.
 - The scheduling engine must keep 100 % test coverage (`npm run test:engine` fails below it), and an architecture test keeps NestJS, Prisma, the clock and randomness out of it.
+- Every status change is one conditional update (`WHERE id = ? AND status IN (...)`), so two parallel requests cannot both move the same schedule. Generation saves only when `updatedAt` is unchanged since it read the schedule, so a parallel hand edit is not overwritten.
+- Creating and approving a schedule run in serializable transactions. Periods of one department may not overlap, and approval checks the whole schedule again with the data of that moment (BR-W03), counting the shifts of other APPROVED and PUBLISHED schedules as busy time. Without the serializable level, parallel requests created overlapping schedules and approved two schedules that booked the same nurse at the same time (`risk-analysis.md`).
+- With the pg driver adapter of Prisma 7, a serialization failure arrives as a `DriverAdapterError` with `originalCode` 40001, not as the documented P2034. `isWriteConflict` in `src/common/db-errors.ts` recognises both and the API answers 409.
+- The engine's candidates are the employees of the schedule's department plus anyone assigned by hand from another department, for example a float nurse. A planning period is 1 to 42 days, which bounds the engine run inside one request.
+- A hand edit moves the schedule back to DRAFT and clears its quality score, so every schedule passes through the engine and its validation again before review.
+- Employees see only PUBLISHED schedules of their own department or with one of their shifts, and only their own assignments (BR-W04, BR-A03). Anything else answers 404, so an employee cannot learn that a draft exists.
+- Not done yet for the workflow: approval by someone other than the submitter (an admin can do both, which needs a submitter column), limiting planners and managers to the schedules of their own department, locking the shifts of an approved or published schedule (R-WF-02), a way to revise a published schedule, and a night shift that starts on the last day of a period, which falls in neither period under BR-T03.
 - Not done yet: rate limiting of failed logins, logging out a single token before it expires, a database constraint against parallel overlapping availability (F-05), and upper limits for shift length and headcount, which need product decisions.
