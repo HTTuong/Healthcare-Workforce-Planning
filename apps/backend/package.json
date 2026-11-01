@@ -23,6 +23,7 @@
     "postinstall": "prisma generate",
     "create-admin": "tsx scripts/create-admin.ts",
     "rbac-smoke": "bash scripts/rbac-smoke.sh",
+    "workflow-smoke": "bash scripts/workflow-smoke.sh",
     "test:engine": "vitest run src/scheduling --coverage --coverage.include='src/scheduling/**/*.ts'"
   },
   "dependencies": {
