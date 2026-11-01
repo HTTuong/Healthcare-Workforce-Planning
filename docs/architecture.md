@@ -109,4 +109,7 @@ docs/            architecture, business rules, risk analysis, test strategy, AI-
 - The first admin is created with `npm run create-admin`, which reads ADMIN_EMAIL and ADMIN_PASSWORD. Other passwords are set by an admin through `PUT /auth/password/:employeeId`.
 - Ownership of availability (BR-A03) is checked by `AvailabilityAccess`. An admin may write anyone's availability, every other role only its own. An employee reads only its own records, a planner or manager reads its own department (only its own records when it has no department), and an admin reads everything.
 - Trade-off: for a non admin, someone else's record answers 403 while a missing record answers 404, so the existence of a record can be inferred. A planner who asks for an employee outside its department gets an empty list rather than 403.
-- Not done yet: rate limiting of failed logins, and revoking a token before it expires.
+- Ids in paths and queries go through `ParseIdPipe` (1 to 2147483647), and integers in bodies through `parsePositiveInt`, so a number that does not fit in a PostgreSQL integer gives 400 instead of 500.
+- Timestamps are checked part by part: a day that does not exist, such as 30 February, and the hour 24 are rejected instead of being moved by JavaScript.
+- Every authenticated request loads the account through `ActiveUserGuard`: a deactivated account gets 401, and the role stored in the database replaces the role in the token. This costs one small query per request.
+- Not done yet: rate limiting of failed logins, logging out a single token before it expires, a database constraint against parallel overlapping availability (F-05), and upper limits for shift length and headcount, which need product decisions.
