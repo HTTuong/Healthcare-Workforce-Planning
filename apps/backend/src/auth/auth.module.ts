@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
+import { ActiveUserGuard } from './active-user.guard.js';
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
 import { AuthService } from './auth.service.js';
@@ -22,8 +23,9 @@ function requireJwtSecret(): string {
   controllers: [AuthController],
   providers: [
     AuthService,
-    // Guards run in the order they are declared: who are you first, then what may you do.
+    // Guards run in the order they are declared: who are you, is your account still active, then what may you do.
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: ActiveUserGuard },
     { provide: APP_GUARD, useClass: RolesGuard }
   ]
 })
