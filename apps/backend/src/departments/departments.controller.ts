@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import { DepartmentsService } from './departments.service.js';
 import { ANY_ROLE } from '../auth/role-sets.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -16,26 +17,26 @@ export class DepartmentsController {
 
   @Roles(...ANY_ROLE)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
+  findOne(@Param('id', ParseIdPipe) id: number) {
     return this.departmentsService.findOne(id);
   }
 
   @Roles('ADMIN')
   @Post()
-  create(@Body() body: { code: string; name: string }) {
-    return this.departmentsService.create(body.code, body.name);
+  create(@Body() body: { code?: unknown; name?: unknown }) {
+    return this.departmentsService.create(body?.code, body?.name);
   }
 
   @Roles('ADMIN')
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() body: { code?: unknown; name?: unknown }) {
+  update(@Param('id', ParseIdPipe) id: number, @Body() body: { code?: unknown; name?: unknown }) {
     return this.departmentsService.update(id, body ?? {});
   }
 
   @Roles('ADMIN')
   @Delete(':id')
   @HttpCode(204)
-  remove(@Param('id', ParseIntPipe) id: number) {
+  remove(@Param('id', ParseIdPipe) id: number) {
     return this.departmentsService.remove(id);
   }
 }
