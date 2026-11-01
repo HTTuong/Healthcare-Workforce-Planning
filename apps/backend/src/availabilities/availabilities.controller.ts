@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
+import { ParseIdPipe } from '../common/parse-id.pipe.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { ANY_ROLE } from '../auth/role-sets.js';
@@ -17,7 +18,7 @@ export class AvailabilitiesController {
   @Get()
   async findAll(
     @CurrentUser() user: AuthUser,
-    @Query('employeeId', new ParseIntPipe({ optional: true })) employeeId?: number
+    @Query('employeeId', new ParseIdPipe({ optional: true })) employeeId?: number
   ) {
     return this.availabilitiesService.findInScope(await this.access.readScope(user, employeeId));
   }
@@ -31,7 +32,7 @@ export class AvailabilitiesController {
 
   @Roles(...ANY_ROLE)
   @Patch(':id')
-  async update(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number, @Body() body: AvailabilityInput) {
+  async update(@CurrentUser() user: AuthUser, @Param('id', ParseIdPipe) id: number, @Body() body: AvailabilityInput) {
     await this.access.assertCanChangeRecord(user, id);
     return this.availabilitiesService.update(id, body ?? {});
   }
@@ -39,7 +40,7 @@ export class AvailabilitiesController {
   @Roles(...ANY_ROLE)
   @Delete(':id')
   @HttpCode(204)
-  async remove(@CurrentUser() user: AuthUser, @Param('id', ParseIntPipe) id: number) {
+  async remove(@CurrentUser() user: AuthUser, @Param('id', ParseIdPipe) id: number) {
     await this.access.assertCanChangeRecord(user, id);
     return this.availabilitiesService.remove(id);
   }
