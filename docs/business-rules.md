@@ -26,12 +26,12 @@ The engine tries to improve these and reports a quality score from 0 to 100.
 
 | Id | Goal | Measured as |
 |---|---|---|
-| BR-S01 | Match employee preferences | Share of assignments in time the employee marked AVAILABLE as preferred |
-| BR-S02 | Fair distribution of unpopular shifts | Spread of night and weekend shifts between employees |
-| BR-S03 | Balanced workload | Spread of assigned hours relative to contract hours |
+| BR-S01 | Match employee preferences | Share of assignments that lie fully inside time the employee marked AVAILABLE, counting only employees who marked some AVAILABLE time. 100 when there are none |
+| BR-S02 | Fair distribution of unpopular shifts | 100 x (1 - Gini coefficient) of night and weekend shifts per contract minute, over active employees. A weekend shift starts on a local Saturday or Sunday |
+| BR-S03 | Balanced workload | 100 x (1 - Gini coefficient) of assigned real minutes per contract minute, over active employees |
 | BR-S04 | Minimize overtime | Hours above contract hours, summed over all employees |
 
-The weights of the soft constraints are decided when the scoring is implemented (days 17/11 and 18/11) and recorded here.
+BR-S01 to BR-S03 are implemented in `apps/backend/src/scheduling/soft-scores.ts`. Overtime (BR-S04), the weights and the combined quality score follow on day 18/11 and are recorded here.
 
 ## Workflow rules
 
