@@ -1,15 +1,19 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Put } from '@nestjs/common';
 import { StaffingRequirementsService } from './staffing-requirements.service.js';
+import { SCHEDULING_ROLES, STAFF_ROLES } from '../auth/role-sets.js';
+import { Roles } from '../auth/roles.decorator.js';
 
 @Controller('departments/:departmentId/staffing-requirements')
 export class StaffingRequirementsController {
   constructor(private readonly staffingRequirementsService: StaffingRequirementsService) {}
 
+  @Roles(...STAFF_ROLES)
   @Get()
   findAll(@Param('departmentId', ParseIntPipe) departmentId: number) {
     return this.staffingRequirementsService.findAll(departmentId);
   }
 
+  @Roles(...SCHEDULING_ROLES)
   @Put(':shiftType')
   set(
     @Param('departmentId', ParseIntPipe) departmentId: number,
@@ -19,6 +23,7 @@ export class StaffingRequirementsController {
     return this.staffingRequirementsService.set(departmentId, shiftType, body?.minHeadcount);
   }
 
+  @Roles(...SCHEDULING_ROLES)
   @Delete(':shiftType')
   @HttpCode(204)
   remove(@Param('departmentId', ParseIntPipe) departmentId: number, @Param('shiftType') shiftType: string) {

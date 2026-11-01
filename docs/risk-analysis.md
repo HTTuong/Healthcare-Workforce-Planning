@@ -2,7 +2,7 @@
 
 This document tracks quality risks and how each one maps to expected behavior and automated tests: **Risk** → **Expected behavior** → **Automation**. It was started before any code existed, so the tests are planned from risks rather than from features. Every entry is updated with evidence from real test runs.
 
-Last updated: 2026-10-18.
+Last updated: 2026-11-01.
 
 ## Initial risk register
 
@@ -17,7 +17,7 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 | R-SCH-05 | Overlapping shifts or too many weekly hours for one person | High | Rejected | BR-H03, BR-H04 | Group D, group I |
 | R-TIME-01 | Night shifts across midnight or a daylight saving change are measured wrong, so rest periods and weekly hours are wrong | High | Durations use real elapsed UTC time | BR-T01, BR-T02 | Vitest tests with fixed dates around 25/10/2026 and 28/03/2027. Availability input without a UTC offset is rejected with 400, and ranges are compared as absolute instants (verified with curl on 25/10/2026) |
 | R-WF-01 | A schedule is published without approval, or changed after approval | High | The API refuses the transition or the edit | BR-W01, BR-W02 | Group F |
-| R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix |
+| R-RBAC-01 | An employee reads or edits someone else's data, or a planner approves their own schedule | High | 403 for every action outside the role's permissions | BR-A01 to BR-A03 | Group G, role by endpoint matrix. The matrix is a unit test that reads the decorators of every route (`role-matrix.spec.ts`), and `scripts/rbac-smoke.sh` checks the roles against the running API. Known gap: ownership (BR-A03) is not enforced yet, so an employee can delete someone else's availability |
 | R-CONS-01 | The UI and the API disagree, for example the UI hides a button but the API still allows the action | Medium | Permissions are enforced in the API, the UI only reflects them | BR-A02 | Group H |
 | R-CONC-01 | Two planners edit or generate the same schedule at the same time and double-book an employee | Medium | One request wins, the other gets a conflict error | BR-H03 | Concurrency test, approach reused from Project 1. Known gap: availability overlap is checked before the insert, so two parallel requests can both pass. A database level exclusion constraint is planned |
 | R-OPT-01 | The optimizer produces a valid but unfair schedule, for example the same person always gets night shifts | Medium | Fairness is visible in the quality score | BR-S02, BR-S03 | Group E |
@@ -26,6 +26,8 @@ Severity reflects the impact on patient safety, staff wellbeing and trust in the
 ## Evidence so far
 
 Only behavior confirmed by a real run is listed here. Each row names the run that showed it.
+
+The authentication and role rows come from a run of the built API against PostgreSQL 16 in a scratch environment on 2026-11-01, and are repeated on the development machine with `npm run rbac-smoke`.
 
 | Area | Observed behavior | Evidence |
 |---|---|---|
@@ -44,7 +46,13 @@ Only behavior confirmed by a real run is listed here. Each row names the run tha
 | Staffing requirement | An unknown shift type, a minimum below 1 and an unknown department are rejected with 400, 400 and 404 | curl |
 | Department | A department that still has shifts, employees or schedules cannot be deleted and returns 409 | curl, department with one shift |
 | Department | An empty department can be renamed and deleted, a duplicate code returns 409, an empty update returns 400 | curl |
-| Unit tests | 29 tests pass across 6 spec files | `npm test` |
+| Authentication | A request without a token, with a tampered token or with a wrong password returns 401, and an unknown email gets the same message as a wrong password | `rbac-smoke.sh` |
+| Authentication | Passwords are stored only as salted scrypt hashes, and no employee endpoint returns the hash | `rbac-smoke.sh` and a direct query on the Employee table |
+| Authentication | The API refuses to start when JWT_SECRET is missing or shorter than 32 characters | start-up run with an empty and a short secret |
+| Roles | An employee cannot list employees, create a shift or set a password (403), a manager cannot create a shift or a department, and a planner cannot create a department but can manage staffing requirements | `rbac-smoke.sh` |
+| Roles | Every route declares a policy and the declared roles match the permission table, and removing one decorator turns the test red | `role-matrix.spec.ts`, checked by deleting the decorator of POST /qualifications |
+| Known gap | An employee can delete another employee's availability (204, should be 403) because ownership is not checked yet (BR-A03) | `rbac-smoke.sh` |
+| Unit tests | 78 tests pass across 14 spec files | `npm test` |
 
 ## How this document will grow
 
