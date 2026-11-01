@@ -8,7 +8,7 @@ Status: design written on 2026-11-01. The hard constraint checks are implemented
 
 The engine is a pure function: `schedule(input: EngineInput): EngineResult`. The types are in `apps/backend/src/scheduling/engine.types.ts`.
 
-- No database, no HTTP and no clock inside the engine. The API loads the data, calls the engine and saves the result. This keeps every rule testable with plain objects in milliseconds.
+- No database, no HTTP and no clock inside the engine. The API loads the data, calls the engine and saves the result. This keeps every rule testable with plain objects in milliseconds. The architecture test `engine.architecture.spec.ts` fails when an engine file imports anything outside its folder, or reads the clock, randomness or the environment.
 - The same input always gives the same output. Every tie is broken by id, so a test can expect an exact schedule.
 - One call plans one department for one planning period. The candidates are the employees of that department.
 - Times are instants (`Date`, stored in UTC). Calendar days and weeks are taken in the configured time zone, Europe/Helsinki by default (BR-T01).
@@ -151,7 +151,11 @@ The unit tests live next to the engine and use fixed dates, never the current ti
 | Greedy limits | A fixture where the result has a BR-H06 violation, documented as expected | Vitest |
 | End to end | Generate a schedule through the API and check the rules on what was saved | Playwright, group D |
 
-Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. The soft scores have 17 tests with values worked out by hand and 3 properties on random inputs. All 9 deliberate mistakes in the scores, such as taking the weekend from the UTC date, were caught. Overtime and the quality score have 12 more tests, and all 10 deliberate mistakes in them and in the new ranking were caught. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
+Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule, 14 example tests for the algorithm (including the regression cases and the known greedy limit) and 4 properties checked on 300 seeded random inputs. The soft scores have 17 tests with values worked out by hand and 3 properties on random inputs. All 9 deliberate mistakes in the scores, such as taking the weekend from the UTC date, were caught. Overtime and the quality score have 12 more tests, and all 10 deliberate mistakes in them and in the new ranking were caught.
+
+Coverage (day 19/11): `npm run test:engine` runs the engine tests with coverage and fails below 100 % of statements, branches, functions and lines, which was checked by removing a test file. Before the gaps were closed, branch coverage was 94.6 %. Two error paths had no test (a local date in the wrong format, and assignments to shifts or employees the input does not know), one edge case was untested (a busy interval of zero minutes), and four branches were defaults that could never be used, which were removed instead of tested. Full coverage only shows that every line ran. The deliberate mistakes above are what show that the tests also check the results.
+
+The architecture test reads the engine's source files. Inserting an import of NestJS, a type import of the Prisma client, a call to `Date.now()` or a call to `Math.random()` each made it fail, while a comment that mentions `Date.now()` did not. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail. The same was done with 10 mistakes in the algorithm: 8 were caught at once, one revealed a test that passed for the wrong reason (it was rewritten and now catches it), and one changed nothing because the candidate check already enforces the period.
 
 ## Open questions
 
