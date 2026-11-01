@@ -51,6 +51,13 @@ The weights are a design assumption to confirm with the product owner. The engin
 | BR-W03 | A schedule with hard violations cannot move to APPROVED | E, F |
 | BR-W04 | Employees see only PUBLISHED schedules | F, G |
 
+How the API applies them (day 20/11):
+- BR-W01: adding or removing an assignment, generating and deleting are refused with 409 unless the schedule is DRAFT or OPTIMIZED. A hand edit moves an OPTIMIZED schedule back to DRAFT, and only an OPTIMIZED schedule can be submitted.
+- BR-W02: publish is refused with 409 unless the schedule is APPROVED. PUBLISHED is final.
+- BR-W03: approval validates the whole schedule again with the data of that moment and answers 409 with the list of violations, so an expired qualification or a schedule approved in the meantime is caught.
+- BR-W04: an employee gets 404 for any schedule that is not PUBLISHED or that belongs to another department without one of their shifts, and sees only their own assignments.
+- A planning period lasts 1 to 42 days, and periods of one department may not overlap. Both are design assumptions to confirm with the product owner.
+
 ## Access rules
 
 | Id | Rule | Test group |
