@@ -2,7 +2,7 @@
 
 This document defines what the scheduling engine must do before any of it is written: the exact meaning of every hard constraint, including its boundaries, the shape of the algorithm, and how each rule will be tested. The rules themselves are listed in `business-rules.md`. This document makes them precise enough to test.
 
-Status: design, written on 2026-11-01. Implementation follows in three steps: hard constraint checks (day 15/11), the assignment algorithm (day 16/11) and soft constraint scoring (days 17/11 and 18/11).
+Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`. The assignment algorithm (day 16/11) and soft constraint scoring (days 17/11 and 18/11) follow.
 
 ## Boundaries
 
@@ -66,6 +66,8 @@ Two consequences that the tests must cover:
 | Candidate check | The algorithm, before every assignment (day 15/11) | BR-H01, BR-H02, BR-H03, BR-H04, BR-H05, BR-H07, BR-T03 | Can this employee take this shift, given everything assigned so far? |
 | Schedule validation | The end of every engine run, and the API before APPROVED (BR-W03) | All of them, including BR-H06 | Which hard rules does this whole schedule break? |
 
+An assignment does not record which requirement the employee fills, so the schedule validation reports a missing or expired qualification as a BR-H06 shortage of that qualification. BR-H01 is reported by the candidate check, which knows the requirement it is filling.
+
 The schedule validation must not trust the algorithm. It is written as a separate function and also runs on schedules a planner edited by hand. One invariant ties the two together: every assignment the algorithm adds passes the candidate check against the final schedule. A test runs the validation on the engine's own output and expects no employee level violation.
 
 ## Algorithm outline
@@ -98,10 +100,12 @@ The unit tests live next to the engine and use fixed dates, never the current ti
 | Greedy limits | A fixture where the result has a BR-H06 violation, documented as expected | Vitest |
 | End to end | Generate a schedule through the API and check the rules on what was saved | Playwright, group D |
 
+Implemented so far: 48 tests for the hard constraints and the local time helpers, one file per rule. Each boundary was then broken on purpose in the code, for example `<` changed to `<=` in the rest check: all 11 deliberate mistakes made at least one test fail.
+
 ## Open questions
 
 - Is the qualification rule meant for the whole shift, as defined here, or only for the date the shift starts? The stricter reading is used until the product owner decides.
-- `isQualificationValid` in the employees module compares dates in UTC. The engine uses local dates. The two must agree before day 15/11.
+- Resolved: `isQualificationValid` in the employees module compared dates in UTC, which kept an expired qualification valid for up to 3 hours after local midnight. It now uses the Helsinki local date, like the engine.
 - Can employees be planned across departments? The design assumes not.
 - Is overstaffing allowed, for example for training? The algorithm never assigns more than `requiredHeadcount`, and the validation does not report it.
 - Upper limits for shift length and headcount (finding F-07 in `exploratory-testing.md`) are still open.
