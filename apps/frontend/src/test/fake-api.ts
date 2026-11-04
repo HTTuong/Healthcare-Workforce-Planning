@@ -43,3 +43,20 @@ export const NOORA = {
   email: 'noora@example.com',
   departmentId: 3
 };
+
+export const ADMIN = {
+  sub: 1,
+  role: 'ADMIN',
+  firstName: 'Aino',
+  lastName: 'Admin',
+  email: 'admin@example.com',
+  departmentId: null
+};
+
+export const MANAGER = { ...ADMIN, sub: 3, role: 'MANAGER', firstName: 'Mikko', lastName: 'Manager', email: 'manager@example.com' };
+
+/** Starts the app already signed in as this profile, as after a reload with a stored token. */
+export function signedInAs(profile: object) {
+  sessionStorage.setItem('hwp.accessToken', 'stored-token');
+  return { 'GET /api/auth/me': { status: 200, body: profile } };
+}
