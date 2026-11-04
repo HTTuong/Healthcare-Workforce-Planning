@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { apiRequest, onUnauthorized } from '../api/client';
+import { apiRequest, onForbidden, onUnauthorized } from '../api/client';
 import { AuthContext, type AuthContextValue, type AuthState } from './auth-context';
 import { clearToken, getToken, setToken } from './session';
 import type { Profile } from './types';
@@ -35,6 +35,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       onUnauthorized(() => {
         clearToken();
         setState({ status: 'signed-out', notice: 'expired' });
+      }),
+    []
+  );
+
+  // A 403 may mean an admin changed this user's role meanwhile. Reading the profile again makes the UI show what
+  // the new role can do, instead of buttons the API now refuses.
+  useEffect(
+    () =>
+      onForbidden(() => {
+        const token = getToken();
+        if (!token) return;
+        apiRequest<Profile>('GET', '/auth/me', { token })
+          .then((user) =>
+            setState((current) =>
+              current.status === 'signed-in' && current.user.role !== user.role ? { status: 'signed-in', user, roleChanged: true } : current
+            )
+          )
+          .catch(() => {
+            // A 401 here ends the session through onUnauthorized. Anything else keeps the current state.
+          });
       }),
     []
   );

@@ -21,6 +21,7 @@ export interface RequestOptions {
 
 type Listener = () => void;
 let unauthorizedListener: Listener | undefined;
+let forbiddenListener: Listener | undefined;
 
 /**
  * Called when a request that carried a token gets 401: the token expired or the account was deactivated (F-04).
@@ -30,6 +31,17 @@ export function onUnauthorized(listener: Listener): () => void {
   unauthorizedListener = listener;
   return () => {
     if (unauthorizedListener === listener) unauthorizedListener = undefined;
+  };
+}
+
+/**
+ * Called when a request that carried a token gets 403. The API reads the role from the database on every request
+ * (F-04), so a 403 can mean the role was changed while the user was signed in. Returns a function that removes it.
+ */
+export function onForbidden(listener: Listener): () => void {
+  forbiddenListener = listener;
+  return () => {
+    if (forbiddenListener === listener) forbiddenListener = undefined;
   };
 }
 
@@ -70,6 +82,7 @@ export async function apiRequest<T>(method: string, path: string, options: Reque
   const body = text === '' ? undefined : parse(text);
   if (!response.ok) {
     if (response.status === 401 && options.token) unauthorizedListener?.();
+    if (response.status === 403 && options.token) forbiddenListener?.();
     throw new ApiError(response.status, messageOf(body) ?? `Request failed with status ${response.status}`, body);
   }
   return body as T;

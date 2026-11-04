@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeApi, sent } from '../test/fake-api';
-import { ApiError, apiRequest, onUnauthorized } from './client';
+import { ApiError, apiRequest, onForbidden, onUnauthorized } from './client';
 
 describe('apiRequest', () => {
   let stop: (() => void) | undefined;
@@ -41,6 +41,16 @@ describe('apiRequest', () => {
     const error = await apiRequest('GET', '/things').catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ApiError);
     expect(error).toMatchObject({ status: 0, message: 'Cannot reach the server. Check your connection and try again.' });
+  });
+
+  it('tells the forbidden listener about a 403 only when the request carried a token', async () => {
+    const listener = vi.fn();
+    stop = onForbidden(listener);
+    fakeApi({ 'GET /api/employees': { status: 403, body: { message: 'Forbidden resource' } } });
+    await expect(apiRequest('GET', '/employees')).rejects.toMatchObject({ status: 403 });
+    expect(listener).not.toHaveBeenCalled();
+    await expect(apiRequest('GET', '/employees', { token: 't' })).rejects.toMatchObject({ status: 403, message: 'Forbidden resource' });
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it('tells the listener about a 401 only when the request carried a token', async () => {
