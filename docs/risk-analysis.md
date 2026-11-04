@@ -82,7 +82,9 @@ The authentication, role and ownership rows come from runs of the built API agai
 | Concurrency | Two schedules that each book the same nurse at the same time, approved in parallel: exactly one is approved in every run, and approving the other one afterwards returns 409 with BR-H03. Without the serializable transaction, both were approved in 3 of 4 runs | `workflow-smoke.sh`, with and without the fix |
 | Concurrency | The lost race returned 500 in 3 runs in a row, because the pg driver adapter does not use Prisma's P2034 code. It now returns 409 | server log, `db-errors.spec.ts` |
 | Published schedule | A planner can still change (200) and delete (204) a shift of a published schedule, and the deleted shift's assignment disappears while the schedule stays PUBLISHED (R-WF-02, open) | pinned checks in `workflow-smoke.sh` |
-| Unit tests | 269 tests pass across 42 spec files | `npm test` |
+| Login UI | 23 component tests cover the login form, the error messages, the session after a reload, sign out and a 401 during use, and the fake API fails a test on any request it did not expect. 10 deliberate mistakes, such as showing the API's own 401 message or keeping the token after sign out, were each caught | `apps/frontend`, `npm test` and mutation check by hand |
+| Login UI | In Chromium against the real API and PostgreSQL, 21 checks pass: the redirect to login, the field errors without a request, one message for a wrong password, the profile and department after login, a reload that keeps the session, a deactivated account that is signed out at the next reload and cannot sign in, sign out, a planner login, and no horizontal scroll at 390 px | Playwright script run in the scratch environment, screenshots |
+| Unit tests | 272 backend tests pass across 43 spec files | `npm test` in `apps/backend` |
 
 ## How this document will grow
 
