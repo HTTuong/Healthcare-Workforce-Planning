@@ -10,6 +10,7 @@ import { ShiftFormPage } from './shifts/ShiftFormPage';
 import { ShiftsPage } from './shifts/ShiftsPage';
 import { HomePage } from './pages/HomePage';
 import { ScheduleViewPage } from './schedules/ScheduleViewPage';
+import { NewSchedulePage } from './schedules/NewSchedulePage';
 import { SchedulesPage } from './schedules/SchedulesPage';
 import { LoginPage } from './pages/LoginPage';
 
@@ -32,6 +33,7 @@ export function App() {
             <Route path="/employees/:id/edit" element={<EmployeeFormPage />} />
           </Route>
           <Route element={<RequireRole roles={SCHEDULING_ROLES} />}>
+            <Route path="/schedules/new" element={<NewSchedulePage />} />
             <Route path="/shifts/new" element={<ShiftFormPage />} />
             <Route path="/shifts/:id/edit" element={<ShiftFormPage />} />
           </Route>

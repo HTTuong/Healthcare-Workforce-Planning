@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { canViewShifts } from '../auth/roles';
+import { canManageShifts, canViewShifts } from '../auth/roles';
 import type { Department } from '../employees/types';
 import { formatDate } from '../time/helsinki';
 import { StatusBadge } from './StatusBadge';
@@ -18,6 +18,7 @@ export function SchedulesPage() {
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [department, setDepartment] = useState('');
   const [status, setStatus] = useState<ScheduleStatus | ''>('');
+  const notice = (useLocation().state as { notice?: string } | null)?.notice;
 
   useEffect(() => {
     let active = true;
@@ -44,7 +45,19 @@ export function SchedulesPage() {
 
   return (
     <>
-      <h1>{staff ? 'Schedules' : 'Published schedules'}</h1>
+      <div className="page-header">
+        <h1>{staff ? 'Schedules' : 'Published schedules'}</h1>
+        {canManageShifts(state.user.role) && (
+          <Link className="button primary" to="/schedules/new">
+            New schedule
+          </Link>
+        )}
+      </div>
+      {notice && (
+        <p className="success" role="status">
+          {notice}
+        </p>
+      )}
       {staff && (
         <div className="filters">
           <label>
