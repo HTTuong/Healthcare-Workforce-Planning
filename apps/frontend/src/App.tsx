@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { AvailabilityPage } from './availability/AvailabilityPage';
 import { RequireAuth } from './auth/RequireAuth';
 import { RequireRole } from './auth/RequireRole';
 import { SCHEDULING_ROLES, STAFF_ROLES } from './auth/roles';
@@ -17,6 +18,7 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/availability" element={<AvailabilityPage />} />
           <Route element={<RequireRole roles={STAFF_ROLES} />}>
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/shifts" element={<ShiftsPage />} />

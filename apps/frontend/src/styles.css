@@ -10,6 +10,8 @@
   --danger: #b42318;
   --danger-bg: #fdecea;
   --info-bg: #e7f3f2;
+  --warn-bg: #fdf3e1;
+  --warn: #8a5300;
   --focus: #1d8f88;
   --radius: 8px;
   color-scheme: light;
@@ -33,6 +35,8 @@
     --danger: #f97066;
     --danger-bg: #3a1d1b;
     --info-bg: #17302e;
+    --warn-bg: #3a2c12;
+    --warn: #f5b84d;
     --focus: #5cc8c0;
     color-scheme: dark;
   }
@@ -539,4 +543,115 @@ button.danger {
   color: #ffffff;
   font-weight: 500;
   cursor: pointer;
+}
+
+.lead {
+  color: var(--muted);
+  margin: -0.5rem 0 1.25rem;
+  max-width: 40rem;
+}
+
+.choices {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.choice {
+  display: flex;
+  gap: 0.625rem;
+  align-items: flex-start;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--info-bg);
+}
+
+.field .choice input {
+  width: auto;
+  flex: none;
+  margin-top: 0.3rem;
+}
+
+.entries-header {
+  max-width: 40rem;
+  margin-top: 1.5rem;
+}
+
+.entries-header h2 {
+  margin: 0;
+}
+
+.choice label {
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.choice-help {
+  font-size: 0.875rem;
+}
+
+.entries {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-width: 40rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.entry:last-child {
+  border-bottom: none;
+}
+
+.entry.editing {
+  background: var(--info-bg);
+}
+
+.entry-text {
+  flex: 1 1 14rem;
+}
+
+.entry-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.kind {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  min-width: 6.5rem;
+  text-align: center;
+}
+
+.kind.available {
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.kind.unavailable {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.kind.leave {
+  background: var(--warn-bg);
+  color: var(--warn);
 }
