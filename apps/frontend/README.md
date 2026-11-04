@@ -54,6 +54,7 @@ src/test/                test setup, a fake API that fails on unexpected request
 | `/employees` | Admin, Planner, Manager | Employee list with search, role filter and inactive filter |
 | `/employees/new`, `/employees/:id/edit` | Admin | Create or edit an employee, deactivate, set a password |
 | `/schedules`, `/schedules/:id` | everyone | Staff: every schedule, its shifts by day with gaps, the hard rule check, scores and work per employee. Employee: own shifts of published schedules |
+| `/schedules/new` | Admin, Planner | Start a draft schedule for a department and a period of 1 to 42 days |
 | `/availability` | everyone | Own availability: add, change and delete entries, whole days or times |
 | `/shifts?week=&department=` | Admin, Planner, Manager | One week of shifts in Helsinki time |
 | `/shifts/new`, `/shifts/:id/edit` | Admin, Planner | Create, edit or delete a shift and its required qualifications |
@@ -63,3 +64,7 @@ The UI hides links and pages a role cannot use, and a role that types the addres
 ## Time
 
 Shift times are typed and shown in Helsinki time and sent to the API with the offset of that day, for example `2026-10-24T22:00:00+03:00`. An end time at or before the start time ends the next day. The form shows the real length, so the night of the October clock change is 9 hours and the March one 7 hours (BR-T02). A time in the hour that the March change skips is refused, and a time that happens twice in October means the first one.
+
+## Schedule workflow
+
+The buttons on a schedule come from the `actions` field of `GET /schedules/:id`, which the API builds from the same table it uses to check permissions and statuses. The UI therefore offers only the steps the API accepts for this role and status. Publish and send back ask for confirmation. After each step the page reads the schedule again before the buttons work again, so a finished step cannot be clicked twice. While a schedule is a draft or optimized, a planner can add and remove people by hand, which moves it back to draft.
