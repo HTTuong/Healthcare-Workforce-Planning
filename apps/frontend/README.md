@@ -27,7 +27,7 @@ Open http://localhost:5173 and sign in with an account created by `npm run creat
 
 ```
 src/api/client.ts        the only code that calls the API, turns errors into ApiError
-src/auth/                session token, AuthProvider, useAuth, RequireAuth, RequireRole, role checks
+src/auth/                session token, AuthProvider, useAuth, RequireAuth, the permission table and its checks
 src/layout/              the top bar and navigation around every signed in page
 src/employees/           employee list, create and edit form, set password
 src/shifts/              weekly shift list, shift form with required qualifications
@@ -59,7 +59,18 @@ src/test/                test setup, a fake API that fails on unexpected request
 | `/shifts?week=&department=` | Admin, Planner, Manager | One week of shifts in Helsinki time |
 | `/shifts/new`, `/shifts/:id/edit` | Admin, Planner | Create, edit or delete a shift and its required qualifications |
 
-The UI hides links and pages a role cannot use, and a role that types the address of such a page sees "No access". The API enforces the same rules on every request.
+## Permissions by role
+
+Every role check of the UI reads one table, `src/auth/permissions.ts`, through `can(role, permission)`, `useCan` and `RequirePermission`. Each permission lists the API routes it stands for. `permissions.contract.test.ts` reads the API's own role table (`apps/backend/src/auth/role-matrix.spec.ts`) and fails when the UI gives a route other roles than the API does, so the UI cannot show what the API refuses or hide what it allows (R-CONS-01). `ui-matrix.test.tsx` checks the navigation, every page and every create link for each role.
+
+The UI hides links and pages a role cannot use, and a role that types the address of such a page sees "No access". The API enforces the same rules on every request. When the API answers 403 to a signed in user, the UI reads the profile again: an admin may have changed the role meanwhile, and the pages then follow the new role at once.
+
+| Role | Navigation | Can open |
+|---|---|---|
+| Admin | Home, Schedules, Availability, Employees, Shifts | everything |
+| Planner | Home, Schedules, Availability, Employees, Shifts | all but creating and editing employees |
+| Manager | Home, Schedules, Availability, Employees, Shifts | reading only, plus approve, send back and publish |
+| Employee | Home, Schedules, Availability | own availability and own shifts of published schedules |
 
 ## Time
 
