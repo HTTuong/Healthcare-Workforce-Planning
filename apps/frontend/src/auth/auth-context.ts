@@ -5,7 +5,7 @@ import type { Profile } from './types';
 export type AuthState =
   | { status: 'loading' }
   | { status: 'signed-out'; notice?: 'expired' }
-  | { status: 'signed-in'; user: Profile };
+  | { status: 'signed-in'; user: Profile; roleChanged?: boolean };
 
 export interface AuthContextValue {
   state: AuthState;

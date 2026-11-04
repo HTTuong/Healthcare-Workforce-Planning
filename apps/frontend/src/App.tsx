@@ -1,8 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import { AvailabilityPage } from './availability/AvailabilityPage';
 import { RequireAuth } from './auth/RequireAuth';
-import { RequireRole } from './auth/RequireRole';
-import { SCHEDULING_ROLES, STAFF_ROLES } from './auth/roles';
+import { RequirePermission } from './auth/RequirePermission';
 import { EmployeeFormPage } from './employees/EmployeeFormPage';
 import { EmployeesPage } from './employees/EmployeesPage';
 import { AppLayout } from './layout/AppLayout';
@@ -21,19 +20,27 @@ export function App() {
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/availability" element={<AvailabilityPage />} />
-          <Route path="/schedules" element={<SchedulesPage />} />
-          <Route path="/schedules/:id" element={<ScheduleViewPage />} />
-          <Route element={<RequireRole roles={STAFF_ROLES} />}>
-            <Route path="/employees" element={<EmployeesPage />} />
-            <Route path="/shifts" element={<ShiftsPage />} />
+          <Route element={<RequirePermission permission="availability.own" />}>
+            <Route path="/availability" element={<AvailabilityPage />} />
           </Route>
-          <Route element={<RequireRole roles={['ADMIN']} />}>
+          <Route element={<RequirePermission permission="schedules.read" />}>
+            <Route path="/schedules" element={<SchedulesPage />} />
+            <Route path="/schedules/:id" element={<ScheduleViewPage />} />
+          </Route>
+          <Route element={<RequirePermission permission="schedules.manage" />}>
+            <Route path="/schedules/new" element={<NewSchedulePage />} />
+          </Route>
+          <Route element={<RequirePermission permission="employees.read" />}>
+            <Route path="/employees" element={<EmployeesPage />} />
+          </Route>
+          <Route element={<RequirePermission permission="employees.manage" />}>
             <Route path="/employees/new" element={<EmployeeFormPage />} />
             <Route path="/employees/:id/edit" element={<EmployeeFormPage />} />
           </Route>
-          <Route element={<RequireRole roles={SCHEDULING_ROLES} />}>
-            <Route path="/schedules/new" element={<NewSchedulePage />} />
+          <Route element={<RequirePermission permission="shifts.read" />}>
+            <Route path="/shifts" element={<ShiftsPage />} />
+          </Route>
+          <Route element={<RequirePermission permission="shifts.manage" />}>
             <Route path="/shifts/new" element={<ShiftFormPage />} />
             <Route path="/shifts/:id/edit" element={<ShiftFormPage />} />
           </Route>

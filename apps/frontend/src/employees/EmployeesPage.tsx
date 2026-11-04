@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { canManageEmployees } from '../auth/roles';
+import { can } from '../auth/permissions';
 import { ROLE_LABELS, type Role } from '../auth/types';
 import { formatContract } from './contract';
 import type { Department, Employee } from './types';
@@ -40,7 +40,7 @@ export function EmployeesPage() {
   }, [load, search, role, showInactive]);
 
   if (state.status !== 'signed-in') return null;
-  const manage = canManageEmployees(state.user.role);
+  const manage = can(state.user.role, 'employees.manage');
   const departmentName = (id: number | null) =>
     id === null ? '-' : (load.status === 'ready' && load.departments.find((d) => d.id === id)?.name) || `#${id}`;
 

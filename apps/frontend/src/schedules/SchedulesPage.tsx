@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { canManageShifts, canViewShifts } from '../auth/roles';
+import { can } from '../auth/permissions';
 import type { Department } from '../employees/types';
 import { formatDate } from '../time/helsinki';
 import { StatusBadge } from './StatusBadge';
@@ -39,7 +39,8 @@ export function SchedulesPage() {
   );
 
   if (state.status !== 'signed-in') return null;
-  const staff = canViewShifts(state.user.role);
+  // Staff see every status and the quality score. Employees get only published schedules from the API.
+  const staff = can(state.user.role, 'schedules.check');
   const departmentName = (id: number) => (load.status === 'ready' && load.departments.find((d) => d.id === id)?.name) || `#${id}`;
   const used = load.status === 'ready' ? load.departments.filter((d) => load.schedules.some((s) => s.departmentId === d.id)) : [];
 
@@ -47,7 +48,7 @@ export function SchedulesPage() {
     <>
       <div className="page-header">
         <h1>{staff ? 'Schedules' : 'Published schedules'}</h1>
-        {canManageShifts(state.user.role) && (
+        {can(state.user.role, 'schedules.manage') && (
           <Link className="button primary" to="/schedules/new">
             New schedule
           </Link>

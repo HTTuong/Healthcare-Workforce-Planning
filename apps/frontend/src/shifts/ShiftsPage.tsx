@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { canManageShifts } from '../auth/roles';
+import { can } from '../auth/permissions';
 import type { Department } from '../employees/types';
 import { addDays, formatDate, formatDuration, localParts, minutesBetween, mondayOf, todayLocal, toInstant } from '../time/helsinki';
 import { type Qualification, type Shift, SHIFT_TYPE_LABELS } from './types';
@@ -51,7 +51,7 @@ export function ShiftsPage() {
   }, [load, week]);
 
   if (state.status !== 'signed-in') return null;
-  const manage = canManageShifts(state.user.role);
+  const manage = can(state.user.role, 'shifts.manage');
   const go = (changes: Record<string, string>) => setParams({ week, ...(department ? { department } : {}), ...changes });
   const ready = load.status === 'ready' ? load : null;
   const departmentName = (id: number) => ready?.departments.find((d) => d.id === id)?.name ?? `#${id}`;

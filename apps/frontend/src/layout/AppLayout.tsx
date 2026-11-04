@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
 import { useAuth } from '../auth/auth-context';
-import { canViewEmployees, canViewShifts } from '../auth/roles';
+import { can } from '../auth/permissions';
 import { ROLE_LABELS } from '../auth/types';
 
 /** The frame of every signed in page: the top bar with navigation and the account, then the page. */
@@ -19,8 +19,8 @@ export function AppLayout() {
             </NavLink>
             <NavLink to="/schedules">Schedules</NavLink>
             <NavLink to="/availability">Availability</NavLink>
-            {canViewEmployees(user.role) && <NavLink to="/employees">Employees</NavLink>}
-            {canViewShifts(user.role) && <NavLink to="/shifts">Shifts</NavLink>}
+            {can(user.role, 'employees.read') && <NavLink to="/employees">Employees</NavLink>}
+            {can(user.role, 'shifts.read') && <NavLink to="/shifts">Shifts</NavLink>}
           </nav>
         </div>
         <div className="account">
@@ -34,6 +34,11 @@ export function AppLayout() {
         </div>
       </header>
       <main className="content">
+        {state.roleChanged && (
+          <p className="notice" role="status">
+            Your role is now {ROLE_LABELS[user.role]}. The pages show what this role can do.
+          </p>
+        )}
         <Outlet />
       </main>
     </div>

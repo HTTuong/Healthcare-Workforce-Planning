@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/auth-context';
-import { canViewShifts } from '../auth/roles';
+import { useCan } from '../auth/useCan';
 import type { Department, Employee } from '../employees/types';
 import { SHIFT_TYPE_LABELS, type Shift } from '../shifts/types';
 import { formatDate, formatDuration, localParts, minutesBetween } from '../time/helsinki';
@@ -55,10 +55,13 @@ function errorText(error: unknown, fallback: string): string {
  */
 export function ScheduleViewPage() {
   const { id } = useParams();
-  const { state, request } = useAuth();
+  const { request } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const staff = state.status === 'signed-in' && canViewShifts(state.user.role);
+  // The staff view needs the shifts and the check. An employee's view is built from its own assignments.
+  const canCheck = useCan('schedules.check');
+  const canReadShifts = useCan('shifts.read');
+  const staff = canCheck && canReadShifts;
   const [load, setLoad] = useState<Load>({ status: 'loading' });
   const [feedback, setFeedback] = useState<Feedback | null>(() => {
     const notice = (location.state as { notice?: string } | null)?.notice;
