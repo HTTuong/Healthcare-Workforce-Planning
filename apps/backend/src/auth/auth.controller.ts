@@ -20,7 +20,8 @@ export class AuthController {
   @Roles(...ANY_ROLE)
   @Get('me')
   me(@Req() request: AuthRequest) {
-    return request.user;
+    // request.user is set by AuthGuard and refreshed from the database by ActiveUserGuard.
+    return this.authService.profile(request.user!);
   }
 
   @Roles('ADMIN')
