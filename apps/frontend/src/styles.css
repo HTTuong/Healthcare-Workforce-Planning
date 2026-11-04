@@ -55,8 +55,18 @@ h1 {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
+}
+
+a {
+  color: var(--accent);
+}
+
+h2 {
+  font-size: 1.125rem;
+  margin: 0 0 1rem;
 }
 
 :focus-visible {
@@ -101,7 +111,8 @@ input {
   margin-bottom: 0.25rem;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   padding: 0.625rem 0.75rem;
   border: 1px solid var(--border);
@@ -110,7 +121,8 @@ input {
   color: var(--text);
 }
 
-.field input[aria-invalid='true'] {
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
@@ -144,14 +156,27 @@ button.secondary {
   font-weight: 500;
 }
 
-button.primary {
-  width: 100%;
+button.primary,
+a.button.primary {
   border: none;
   background: var(--accent);
   color: var(--accent-text);
 }
 
-button.primary:hover:not(:disabled) {
+a.button.primary {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.login-card button.primary {
+  width: 100%;
+}
+
+button.primary:hover:not(:disabled),
+a.button.primary:hover {
   background: var(--accent-hover);
 }
 
@@ -230,4 +255,231 @@ button:disabled {
   padding: 2rem 1rem;
   text-align: center;
   color: var(--muted);
+}
+
+.topbar-start {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+}
+
+nav a {
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+}
+
+nav a.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.success {
+  border-radius: var(--radius);
+  padding: 0.625rem 0.75rem;
+  margin: 0 0 1rem;
+  background: var(--info-bg);
+}
+
+.form-error p {
+  margin: 0 0 0.5rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.filters input,
+.filters select {
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  min-width: 12rem;
+}
+
+label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-weight: 400;
+}
+
+.filters label.checkbox {
+  padding-bottom: 0.5rem;
+}
+
+.filters label.checkbox input,
+.field label.checkbox input {
+  min-width: 0;
+  width: auto;
+}
+
+.field label.checkbox {
+  display: flex;
+}
+
+.count {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0 0 0.5rem;
+}
+
+.table-wrap {
+  /* Contains the visually hidden header text, which is positioned absolutely and otherwise widened the page. */
+  position: relative;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8125rem;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.status {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+}
+
+.status.active {
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.status.inactive {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  max-width: 40rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 1rem;
+}
+
+.form-grid .wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+fieldset.field {
+  border: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+fieldset.field legend {
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+  padding: 0;
+}
+
+.inline {
+  display: flex;
+  gap: 1rem;
+}
+
+.inline label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.field input.short {
+  width: 5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.form-grid .hint {
+  text-align: left;
+  margin: 0 0 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
