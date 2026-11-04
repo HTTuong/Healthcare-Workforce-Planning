@@ -30,6 +30,8 @@ src/api/client.ts        the only code that calls the API, turns errors into Api
 src/auth/                session token, AuthProvider, useAuth, RequireAuth, RequireRole, role checks
 src/layout/              the top bar and navigation around every signed in page
 src/employees/           employee list, create and edit form, set password
+src/shifts/              weekly shift list, shift form with required qualifications
+src/time/helsinki.ts     the only code that converts between Helsinki local time and instants
 src/pages/               login and home pages
 src/test/                test setup, a fake API that fails on unexpected requests, renderApp
 ```
@@ -49,5 +51,11 @@ src/test/                test setup, a fake API that fails on unexpected request
 | `/` | signed in | Name, role and department |
 | `/employees` | Admin, Planner, Manager | Employee list with search, role filter and inactive filter |
 | `/employees/new`, `/employees/:id/edit` | Admin | Create or edit an employee, deactivate, set a password |
+| `/shifts?week=&department=` | Admin, Planner, Manager | One week of shifts in Helsinki time |
+| `/shifts/new`, `/shifts/:id/edit` | Admin, Planner | Create, edit or delete a shift and its required qualifications |
 
 The UI hides links and pages a role cannot use, and a role that types the address of such a page sees "No access". The API enforces the same rules on every request.
+
+## Time
+
+Shift times are typed and shown in Helsinki time and sent to the API with the offset of that day, for example `2026-10-24T22:00:00+03:00`. An end time at or before the start time ends the next day. The form shows the real length, so the night of the October clock change is 9 hours and the March one 7 hours (BR-T02). A time in the hour that the March change skips is refused, and a time that happens twice in October means the first one.
