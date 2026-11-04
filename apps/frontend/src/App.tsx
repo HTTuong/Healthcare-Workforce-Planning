@@ -9,6 +9,8 @@ import { AppLayout } from './layout/AppLayout';
 import { ShiftFormPage } from './shifts/ShiftFormPage';
 import { ShiftsPage } from './shifts/ShiftsPage';
 import { HomePage } from './pages/HomePage';
+import { ScheduleViewPage } from './schedules/ScheduleViewPage';
+import { SchedulesPage } from './schedules/SchedulesPage';
 import { LoginPage } from './pages/LoginPage';
 
 export function App() {
@@ -19,6 +21,8 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/availability" element={<AvailabilityPage />} />
+          <Route path="/schedules" element={<SchedulesPage />} />
+          <Route path="/schedules/:id" element={<ScheduleViewPage />} />
           <Route element={<RequireRole roles={STAFF_ROLES} />}>
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/shifts" element={<ShiftsPage />} />

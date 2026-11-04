@@ -17,6 +17,7 @@ export function AppLayout() {
             <NavLink to="/" end>
               Home
             </NavLink>
+            <NavLink to="/schedules">Schedules</NavLink>
             <NavLink to="/availability">Availability</NavLink>
             {canViewEmployees(user.role) && <NavLink to="/employees">Employees</NavLink>}
             {canViewShifts(user.role) && <NavLink to="/shifts">Shifts</NavLink>}

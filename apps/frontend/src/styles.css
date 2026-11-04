@@ -655,3 +655,107 @@ button.danger {
   background: var(--warn-bg);
   color: var(--warn);
 }
+
+.status-badge {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.125rem 0.625rem;
+  border-radius: 999px;
+  background: var(--border);
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.status-badge.optimized,
+.status-badge.review {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.status-badge.approved,
+.status-badge.published {
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.summary {
+  margin-bottom: 1.5rem;
+  max-width: 40rem;
+}
+
+.wide-panel {
+  max-width: 60rem;
+}
+
+.violations {
+  margin: 0 0 1rem;
+  padding-left: 1.25rem;
+}
+
+.violations li {
+  margin-bottom: 0.25rem;
+}
+
+.scores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.scores div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.875rem;
+  min-width: 6.5rem;
+}
+
+.scores dt {
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.scores dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.scores .total {
+  border-color: var(--accent);
+}
+
+.day {
+  margin-bottom: 1.25rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+tr.problem td {
+  background: var(--danger-bg);
+}
+
+.flag {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+td.wrap-cell {
+  white-space: normal;
+  min-width: 12rem;
+}
+
+.kind.shift-morning,
+.kind.shift-evening {
+  background: var(--info-bg);
+  color: var(--accent);
+}
+
+.kind.shift-night {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
