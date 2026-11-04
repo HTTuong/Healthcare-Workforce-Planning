@@ -27,8 +27,10 @@ Open http://localhost:5173 and sign in with an account created by `npm run creat
 
 ```
 src/api/client.ts        the only code that calls the API, turns errors into ApiError
-src/auth/                session token, AuthProvider, useAuth, RequireAuth
-src/pages/               one component per page
+src/auth/                session token, AuthProvider, useAuth, RequireAuth, RequireRole, role checks
+src/layout/              the top bar and navigation around every signed in page
+src/employees/           employee list, create and edit form, set password
+src/pages/               login and home pages
 src/test/                test setup, a fake API that fails on unexpected requests, renderApp
 ```
 
@@ -38,3 +40,14 @@ src/test/                test setup, a fake API that fails on unexpected request
 - The token is kept in sessionStorage, so a reload keeps the session and closing the tab ends it.
 - Any request with a token that gets 401 ends the session and the login page says so. This covers an expired token and an account an admin deactivated.
 - Signing out forgets the token in this browser only. The API cannot revoke a token before it expires (see `docs/architecture.md`).
+
+## Pages
+
+| Path | Who | What |
+|---|---|---|
+| `/login` | everyone | Sign in |
+| `/` | signed in | Name, role and department |
+| `/employees` | Admin, Planner, Manager | Employee list with search, role filter and inactive filter |
+| `/employees/new`, `/employees/:id/edit` | Admin | Create or edit an employee, deactivate, set a password |
+
+The UI hides links and pages a role cannot use, and a role that types the address of such a page sees "No access". The API enforces the same rules on every request.
