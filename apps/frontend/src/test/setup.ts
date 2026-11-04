@@ -4,5 +4,6 @@ import { afterEach } from 'vitest';
 
 afterEach(() => {
   cleanup();
-  sessionStorage.clear();
+  // The contract test runs in Node, where there is no browser storage.
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
 });
