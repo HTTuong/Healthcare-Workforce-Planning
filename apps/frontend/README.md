@@ -32,6 +32,7 @@ src/layout/              the top bar and navigation around every signed in page
 src/employees/           employee list, create and edit form, set password
 src/shifts/              weekly shift list, shift form with required qualifications
 src/availability/        my availability: available, unavailable and leave
+src/schedules/           schedule list and schedule view
 src/time/helsinki.ts     the only code that converts between Helsinki local time and instants
 src/pages/               login and home pages
 src/test/                test setup, a fake API that fails on unexpected requests, renderApp
@@ -52,6 +53,7 @@ src/test/                test setup, a fake API that fails on unexpected request
 | `/` | signed in | Name, role and department |
 | `/employees` | Admin, Planner, Manager | Employee list with search, role filter and inactive filter |
 | `/employees/new`, `/employees/:id/edit` | Admin | Create or edit an employee, deactivate, set a password |
+| `/schedules`, `/schedules/:id` | everyone | Staff: every schedule, its shifts by day with gaps, the hard rule check, scores and work per employee. Employee: own shifts of published schedules |
 | `/availability` | everyone | Own availability: add, change and delete entries, whole days or times |
 | `/shifts?week=&department=` | Admin, Planner, Manager | One week of shifts in Helsinki time |
 | `/shifts/new`, `/shifts/:id/edit` | Admin, Planner | Create, edit or delete a shift and its required qualifications |
