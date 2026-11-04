@@ -33,6 +33,19 @@ export class AuthService {
     return { accessToken: await this.jwt.signAsync({ sub: employee.id, role: employee.role }) };
   }
 
+  /**
+   * The signed in user's identity for the UI: the token's sub and role, plus name, email and department.
+   * The guard has just checked that the account exists and is active, so a missing row means it was deleted since.
+   */
+  async profile(user: { sub: number; role: string }) {
+    const employee = await this.prisma.employee.findUnique({
+      where: { id: user.sub },
+      select: { firstName: true, lastName: true, email: true, departmentId: true }
+    });
+    if (!employee) throw new UnauthorizedException('This account is not active');
+    return { sub: user.sub, role: user.role, ...employee };
+  }
+
   async setPassword(employeeId: number, passwordInput: unknown) {
     if (
       typeof passwordInput !== 'string' ||
