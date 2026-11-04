@@ -321,8 +321,14 @@ nav a.active {
   color: var(--muted);
 }
 
+.filters label {
+  max-width: 100%;
+}
+
+/* A select is as wide as its longest option, and department names are free text, so it must be capped. */
 .filters input,
 .filters select {
+  max-width: 100%;
   padding: 0.5rem 0.625rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -482,4 +488,55 @@ fieldset.field legend {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.week-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hint-inline {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: 0.375rem 0 0;
+}
+
+.inline.wrap {
+  flex-wrap: wrap;
+}
+
+.inline.wrap label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.inline.wrap input {
+  width: auto;
+}
+
+.inline.requirement {
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.inline.requirement select {
+  width: auto;
+  max-width: 100%;
+}
+
+button.danger {
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.375rem 0.75rem;
+  background: var(--danger);
+  color: #ffffff;
+  font-weight: 500;
+  cursor: pointer;
 }
