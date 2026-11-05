@@ -114,13 +114,29 @@ describe('session', () => {
     expect(sessionStorage.getItem('hwp.accessToken')).toBeNull();
   });
 
-  it('keeps the token when the server cannot be reached on reload', async () => {
+  // Changed on day 28/11 (U-05): this used to show the login page, which looked like being signed out.
+  it('keeps the token when the server cannot be reached on reload, and says the server is unavailable', async () => {
     sessionStorage.setItem('hwp.accessToken', TOKEN);
-    fakeApi({ 'GET /api/auth/me': () => Promise.reject(new TypeError('Failed to fetch')) });
+    let calls = 0;
+    fakeApi({
+      ...signedIn,
+      'GET /api/auth/me': () => (++calls === 1 ? Promise.reject(new TypeError('Failed to fetch')) : { status: 200, body: NOORA })
+    });
     renderApp('/');
-    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Cannot reach the server' })).toBeInTheDocument();
     expect(sessionStorage.getItem('hwp.accessToken')).toBe(TOKEN);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { name: 'Welcome, Noora' })).toBeInTheDocument();
+  });
+
+  it('treats a 500 from the proxy on reload the same way, and lets the user sign out', async () => {
+    sessionStorage.setItem('hwp.accessToken', TOKEN);
+    fakeApi({ 'GET /api/auth/me': { status: 500 } });
+    renderApp('/');
+    expect(await screen.findByRole('heading', { name: 'Cannot reach the server' })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(screen.getByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+    expect(sessionStorage.getItem('hwp.accessToken')).toBeNull();
   });
 
   it('ends the session when a later request gets 401, for example after deactivation', async () => {

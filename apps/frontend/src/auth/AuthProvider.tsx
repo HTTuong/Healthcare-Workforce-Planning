@@ -10,6 +10,7 @@ import type { Profile } from './types';
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>(() => (getToken() ? { status: 'loading' } : { status: 'signed-out' }));
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const token = getToken();
@@ -21,12 +22,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         // A 401 has already ended the session through onUnauthorized, with the notice. Any other failure, such as
-        // the server being down, shows the login page and keeps the token, so a reload can try again.
-        if (active) setState((current) => (current.status === 'loading' ? { status: 'signed-out' } : current));
+        // the server being down, keeps the token and says the server is unavailable. Showing the login page here
+        // looked like being signed out (U-05).
+        if (active) setState((current) => (current.status === 'loading' ? { status: 'unavailable' } : current));
       });
     return () => {
       active = false;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    setState({ status: 'loading' });
+    setAttempt((n) => n + 1);
   }, []);
 
   // Any later 401 on a request with a token ends the session and tells the login page why.
@@ -76,6 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const value = useMemo<AuthContextValue>(() => ({ state, login, logout, request }), [state, login, logout, request]);
+  const value = useMemo<AuthContextValue>(() => ({ state, login, logout, retry, request }), [state, login, logout, retry, request]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
