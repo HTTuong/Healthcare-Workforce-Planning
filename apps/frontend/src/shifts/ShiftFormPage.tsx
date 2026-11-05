@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client';
+import { parseRouteId } from '../api/route-id';
+import { usePageTitle } from '../layout/usePageTitle';
 import { useAuth } from '../auth/auth-context';
 import type { Department } from '../employees/types';
 import { formatDate, formatDuration, localParts, mondayOf, toOffsetString, todayLocal } from '../time/helsinki';
@@ -42,7 +44,8 @@ function fieldsOf(shift: Shift): Fields {
 export function ShiftFormPage() {
   const { id: idParam } = useParams();
   const [params] = useSearchParams();
-  const editId = idParam === undefined ? null : Number(idParam);
+  const editId = idParam === undefined ? null : parseRouteId(idParam);
+  const badId = idParam !== undefined && editId === null;
   const { request } = useAuth();
   const navigate = useNavigate();
   const formId = useId();
@@ -64,7 +67,10 @@ export function ShiftFormPage() {
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  usePageTitle(idParam === undefined ? 'New shift' : 'Edit shift');
+
   useEffect(() => {
+    if (badId) return;
     let active = true;
     const shift = editId === null ? Promise.resolve(null) : request<Shift>('GET', `/shifts/${editId}`);
     Promise.all([request<Department[]>('GET', '/departments'), request<Qualification[]>('GET', '/qualifications'), shift])
@@ -86,11 +92,11 @@ export function ShiftFormPage() {
     return () => {
       active = false;
     };
-  }, [editId, request]);
+  }, [badId, editId, request]);
 
   const set = <K extends keyof Fields>(key: K, value: Fields[K]) => setFields((current) => ({ ...current, [key]: value }));
   const times = shiftInstants(fields);
-  const title = editId === null ? 'New shift' : 'Edit shift';
+  const title = idParam === undefined ? 'New shift' : 'Edit shift';
   const backTo = `/shifts?week=${mondayOf(fields.date || todayLocal())}${fields.departmentId ? `&department=${fields.departmentId}` : ''}`;
 
   function changeType(type: ShiftType) {
@@ -161,6 +167,17 @@ export function ShiftFormPage() {
     }
   }
 
+  if (badId) {
+    return (
+      <>
+        <h1>{title}</h1>
+        <p className="form-error" role="alert">
+          This shift does not exist.
+        </p>
+        <Link to="/shifts">Back to shifts</Link>
+      </>
+    );
+  }
   if (loading) {
     return (
       <p className="page-status" role="status">

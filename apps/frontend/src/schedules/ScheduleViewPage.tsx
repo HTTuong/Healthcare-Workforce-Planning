@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
+import { parseRouteId } from '../api/route-id';
+import { usePageTitle } from '../layout/usePageTitle';
 import { useAuth } from '../auth/auth-context';
 import { useCan } from '../auth/useCan';
 import type { Department, Employee } from '../employees/types';
@@ -54,7 +56,8 @@ function errorText(error: unknown, fallback: string): string {
  * remove people by hand. An employee sees only its own shifts of a published schedule (BR-W04, BR-A03).
  */
 export function ScheduleViewPage() {
-  const { id } = useParams();
+  const { id: idParam } = useParams();
+  const id = parseRouteId(idParam);
   const { request } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,8 +72,15 @@ export function ScheduleViewPage() {
   });
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  usePageTitle(
+    load.status === 'ready'
+      ? `${load.department}, ${formatDate(load.schedule.periodStart)} to ${formatDate(load.schedule.periodEnd)}`
+      : 'Schedule'
+  );
 
   const fetchAll = useCallback(async () => {
+    // An address such as /schedules/abc names no schedule, so the page says so without asking the API (U-02).
+    if (id === null) throw new ApiError(404, 'Not found');
     const schedule = await request<ScheduleDetail>('GET', `/schedules/${id}`);
     const departments = await request<Department[]>('GET', '/departments');
     const department = departments.find((d) => d.id === schedule.departmentId)?.name ?? `#${schedule.departmentId}`;

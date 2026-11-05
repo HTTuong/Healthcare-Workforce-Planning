@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useId, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ApiError } from '../api/client';
+import { parseRouteId } from '../api/route-id';
+import { usePageTitle } from '../layout/usePageTitle';
 import { useAuth } from '../auth/auth-context';
 import { ROLE_LABELS, type Role } from '../auth/types';
 import { DEFAULT_CONTRACT_MINUTES, joinContract, splitContract } from './contract';
@@ -68,7 +70,9 @@ function saveErrorMessage(error: unknown): string {
 /** Create an employee (/employees/new) or edit one (/employees/:id/edit). Admin only. */
 export function EmployeeFormPage() {
   const { id: idParam } = useParams();
-  const editId = idParam === undefined ? null : Number(idParam);
+  const editId = idParam === undefined ? null : parseRouteId(idParam);
+  // An address such as /employees/abc/edit names no employee at all.
+  const badId = idParam !== undefined && editId === null;
   const { state, request } = useAuth();
   const navigate = useNavigate();
   const formId = useId();
@@ -80,7 +84,10 @@ export function EmployeeFormPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  usePageTitle(idParam === undefined ? 'New employee' : 'Edit employee');
+
   useEffect(() => {
+    if (badId) return;
     let active = true;
     const employee = editId === null ? Promise.resolve(null) : request<Employee>('GET', `/employees/${editId}`);
     Promise.all([request<Department[]>('GET', '/departments'), employee])
@@ -98,7 +105,7 @@ export function EmployeeFormPage() {
     return () => {
       active = false;
     };
-  }, [editId, request]);
+  }, [badId, editId, request]);
 
   if (state.status !== 'signed-in') return null;
   // An admin who demoted or deactivated their own account would lock themselves out at the next request.
@@ -143,7 +150,18 @@ export function EmployeeFormPage() {
     }
   }
 
-  const title = editId === null ? 'New employee' : 'Edit employee';
+  const title = idParam === undefined ? 'New employee' : 'Edit employee';
+  if (badId) {
+    return (
+      <>
+        <h1>{title}</h1>
+        <p className="form-error" role="alert">
+          This employee does not exist.
+        </p>
+        <Link to="/employees">Back to employees</Link>
+      </>
+    );
+  }
   if (loading) {
     return (
       <p className="page-status" role="status">
