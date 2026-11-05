@@ -65,7 +65,9 @@ describe('new shift form', () => {
       departmentId: 3,
       requirements: [{ qualificationId: 5, count: 2 }]
     });
-    // Back on the list, in the week of the new shift and its department.
+    // Back on the list, in the week of the new shift and its department. Waiting for the list keeps this from
+    // depending on how fast the list request starts (it failed once when the file ran alone).
+    await screen.findByText('No shifts in this week.');
     expect(calls(fetchMock)).toContain('GET /api/shifts?departmentId=3');
     expect(screen.getByRole('heading', { name: /^Mon 19 Oct 2026/ })).toBeInTheDocument();
   });
