@@ -1,5 +1,5 @@
 import { type APIRequestContext, type APIResponse, expect } from '@playwright/test';
-import type { Department, Employee, Profile, Qualification, Role, Schedule, Shift } from './types';
+import type { Availability, Department, Employee, GenerateResult, Profile, Qualification, Role, Schedule, Shift, Violation } from './types';
 
 type Body = Record<string, unknown>;
 
@@ -55,7 +55,16 @@ export class ApiClient {
     create: (body: Body) => this.ok<Employee>(this.post('/employees', body), 'POST /employees'),
     update: (id: number, body: Body) => this.ok<Employee>(this.patch(`/employees/${id}`, body), `PATCH /employees/${id}`),
     setPassword: (id: number, password: string) =>
-      this.ok<void>(this.put(`/auth/password/${id}`, { password }), `PUT /auth/password/${id}`)
+      this.ok<void>(this.put(`/auth/password/${id}`, { password }), `PUT /auth/password/${id}`),
+    assignQualification: (id: number, qualificationId: number, validUntil: string | null) =>
+      this.ok<unknown>(
+        this.put(`/employees/${id}/qualifications/${qualificationId}`, { validUntil }),
+        `PUT /employees/${id}/qualifications/${qualificationId}`
+      )
+  };
+
+  readonly availability = {
+    create: (body: Body) => this.ok<Availability>(this.post('/availabilities', body), 'POST /availabilities')
   };
 
   readonly departments = {
@@ -75,8 +84,10 @@ export class ApiClient {
   readonly schedules = {
     create: (body: Body) => this.ok<Schedule>(this.post('/schedules', body), 'POST /schedules'),
     get: (id: number) => this.ok<Schedule>(this.get(`/schedules/${id}`), `GET /schedules/${id}`),
-    step: (id: number, action: 'generate' | 'submit' | 'approve' | 'reject' | 'publish') =>
-      this.ok<unknown>(this.post(`/schedules/${id}/${action}`), `POST /schedules/${id}/${action}`)
+    check: (id: number) => this.ok<{ violations: Violation[] }>(this.get(`/schedules/${id}/check`), `GET /schedules/${id}/check`),
+    generate: (id: number) => this.ok<GenerateResult>(this.post(`/schedules/${id}/generate`), `POST /schedules/${id}/generate`),
+    step: (id: number, action: 'submit' | 'approve' | 'reject' | 'publish') =>
+      this.ok<Schedule>(this.post(`/schedules/${id}/${action}`), `POST /schedules/${id}/${action}`)
   };
 
   private async ok<T>(pending: Promise<APIResponse>, what: string): Promise<T> {

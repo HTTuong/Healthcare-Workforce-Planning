@@ -47,6 +47,29 @@ export interface Shift {
   requirements: Array<{ qualificationId: number; count: number }>;
 }
 
+export type AvailabilityType = 'AVAILABLE' | 'UNAVAILABLE' | 'LEAVE';
+
+export interface Availability {
+  id: number;
+  employeeId: number;
+  type: AvailabilityType;
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface Violation {
+  ruleId: string;
+  shiftId: number;
+  employeeId?: number;
+  message: string;
+}
+
+export interface Assignment {
+  id: number;
+  shiftId: number;
+  employeeId: number;
+}
+
 export type ScheduleStatus = 'DRAFT' | 'OPTIMIZED' | 'REVIEW' | 'APPROVED' | 'PUBLISHED';
 
 export interface Schedule {
@@ -57,4 +80,11 @@ export interface Schedule {
   status: ScheduleStatus;
   qualityScore: number | null;
   actions?: string[];
+  assignments?: Assignment[];
+}
+
+export interface GenerateResult {
+  added: number;
+  violations: Violation[];
+  schedule: Schedule;
 }

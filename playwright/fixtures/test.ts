@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import { ApiClient, type ApiByRole } from '../api/ApiClient';
 import { ROLES, type Role } from '../api/types';
+import { createFactories, type Factories } from '../factories';
 import { credentials } from '../factories/users';
 import { env } from '../utils/env';
 
@@ -17,6 +18,8 @@ interface TestFixtures {
    * The login form itself is tested in tests/e2e/login.spec.ts.
    */
   signInAs: (role: Role, path?: string) => Promise<Page>;
+  /** Test data by business meaning: createEligibleEmployee, createUnavailableEmployee, createPublished... */
+  factories: Factories;
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
@@ -38,6 +41,10 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const request = await playwright.request.newContext({ baseURL: env.apiUrl });
     await use(new ApiClient(request));
     await request.dispose();
+  },
+
+  factories: async ({ api }, use) => {
+    await use(createFactories(api));
   },
 
   signInAs: async ({ page, api }, use) => {
