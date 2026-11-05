@@ -175,7 +175,7 @@ a.button.primary {
   text-decoration: none;
 }
 
-.login-card button.primary {
+.login-card form button.primary {
   width: 100%;
 }
 
@@ -264,13 +264,16 @@ button:disabled {
 .topbar-start {
   display: flex;
   flex-wrap: wrap;
+  min-width: 0;
   gap: 1.5rem;
   align-items: center;
 }
 
+/* The links wrap instead of widening the page on a 320 px screen (U-04). */
 nav {
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
 }
 
 nav a {
