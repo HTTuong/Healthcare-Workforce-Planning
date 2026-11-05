@@ -101,6 +101,8 @@ The authentication, role and ownership rows come from runs of the built API agai
 | RBAC on the UI | Every role check of the UI reads one permission table, and a contract test compares the 28 API routes it names with the API's role table (`role-matrix.spec.ts`). Changing `POST /shifts` to staff in the API table made the test fail. 42 tests check the navigation, 7 pages and 3 create links for each role, and a closed page asks the API for nothing. 8 deliberate mistakes in the UI checks were each caught | `apps/frontend`, `npm test` and mutation check by hand |
 | RBAC on the UI | In Chromium against the real API, for each of the 4 roles, every page the UI closes is refused by the API with 403 for the request that page would make, and the pages each role can open match the permission table | Playwright script run in the scratch environment |
 | RBAC on the UI | A planner demoted to employee while signed in still saw the Shifts link. Her next request got 403, the UI read her profile again, closed the page and removed the link (R-CONS-01, F-04) | Playwright script, screenshot |
+| Manual UI session | Session 2 found 5 issues (U-01 to U-05): one tab title for every page, a technical message for a bad address, a lost query after login, pages too wide at 320 px, and a server outage that looked like being signed out. All fixed, each with a test that fails on the old code. axe-core found no accessibility violations on 11 views | `exploratory-testing.md`, `ui-findings.test.tsx` |
+| Unit tests | 202 frontend tests pass across 21 files | `npm test` in `apps/frontend` |
 | Unit tests | 272 backend tests pass across 43 spec files | `npm test` in `apps/backend` |
 
 ## How this document will grow

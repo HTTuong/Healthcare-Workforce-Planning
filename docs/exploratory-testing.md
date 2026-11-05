@@ -1,6 +1,6 @@
 # Exploratory Testing - Healthcare Workforce Planning
 
-This document records exploratory test sessions on the API. Each session has a charter, the areas covered, the findings with their status, and the questions it raised. The automated tests prove what we expected; these sessions look for what we did not expect.
+This document records exploratory test sessions on the API and the UI. Each session has a charter, the areas covered, the findings with their status, and the questions it raised. The automated tests prove what we expected; these sessions look for what we did not expect.
 
 ## Session 1: API input, boundaries, sessions and parallel requests
 
@@ -58,7 +58,58 @@ The 19 requests that had given 500 or a moved date were sent again: all returned
 - Should department codes be stored in upper case so that `ER` and `er` are the same code?
 - What password rules apply beyond a length of 12 to 128 characters?
 
+## Session 2: the whole UI, flow by flow
+
+Date: 2026-11-05.
+
+Build: the frontend after day 27/11 (RBAC on the UI), run with the Vite dev server against the API and PostgreSQL 16 in a scratch environment.
+
+Charter: click through every flow of every role in a browser, with the situations the component tests do not reach: the browser's own buttons, odd addresses, narrow screens, very long data, a server that stops answering, and assistive technology.
+
+Tools: Chromium driven by Playwright scripts that record what a tester would see, axe-core 4 for accessibility, screenshots, and the server log. The steps were scripted so they can be repeated exactly, but each one was chosen and its result judged by hand.
+
+### Areas and heuristics
+
+| Area | What was tried |
+|---|---|
+| Accessibility | axe-core with the WCAG 2.1 AA and best practice rules on 11 views, including the login errors, in light and dark mode. Tab titles. Focus after following a link |
+| Addresses | `/schedules/abc`, `/employees/abc/edit`, `/shifts/abc/edit`, an id above 2147483647, a deep link with a query opened while signed out |
+| Browser buttons | Back after signing out, reload on every page |
+| Screen sizes | 320, 390 and 1200 px wide |
+| Data | The 50,000 character department name left by session 1 (F-07) in every list and form that shows departments |
+| Double actions | Double click on the save buttons |
+| Server down | The API stopped while a user is signed in, then a reload |
+| Regression | All seven browser scripts of days 21 to 27/11, 105 checks |
+
+### Findings
+
+| Id | Finding | Severity | Status | How it is checked now |
+|---|---|---|---|---|
+| U-01 | Every page had the same tab title, so tabs, history and screen readers could not tell the pages apart (WCAG 2.4.2) | Low | Fixed: each page sets its own title, a schedule by its department and period | `ui-findings.test.tsx` |
+| U-02 | An address that names no record, such as `/schedules/abc`, showed the API's message "Expected a positive integer id" | Low | Fixed: the page checks the id first and says the record does not exist, without calling the API | `route-id.test.ts`, `ui-findings.test.tsx` |
+| U-03 | A link with a query, such as `/shifts?week=2026-10-19`, opened while signed out lost its query after login | Low | Fixed: the login page returns to the path and the query | `ui-findings.test.tsx` |
+| U-04 | At 320 px every page was 409 px wide, because the navigation links did not wrap | Low | Fixed: the links wrap | browser script at 320 px |
+| U-05 | When the API stopped answering, a reload showed the login page with no message, which looked like being signed out although the token was kept | Medium | Fixed: the page says the server cannot be reached, keeps the user signed in and offers Try again and Sign out. The Vite proxy answers 500 when the API is down, which the UI treats the same way | `LoginPage.test.tsx` (the earlier test that expected the login page was changed on purpose), browser script |
+
+Each fix was checked by putting the old code back: the tests named above failed each time.
+
+### What worked as intended
+
+- axe-core found no violations on any of the 11 views in light or dark mode.
+- Back after signing out returns to the login page, not to the signed in page.
+- A double click on a save button sends one request, because the button is disabled while the request runs.
+- The 50,000 character department name no longer widens any page (fixed on day 23/11). The name itself is still accepted by the API (F-07, open).
+- All 105 checks of the earlier browser scripts pass after the fixes. One script assumed a department name that later scripts had changed, which was a problem of the script, not of the UI.
+- A shift form test failed once when its file ran alone, because it checked a request before the list had loaded. It now waits for the list.
+
+### Observations without a change
+
+- After following a link, focus stays on the link. The new tab title is announced, but screen reader users do not hear the new heading. Moving focus to the heading on every page change is a candidate for a later lesson.
+- Signing out ends the session in that browser tab only, because each tab keeps its own token. The API cannot revoke a token before it expires (see `architecture.md`).
+- Leaving a form with unsaved changes asks nothing.
+
 ## How to repeat a session
 
 - `apps/backend/http/api.http` holds the requests used for manual testing, including one per finding. Open it in VS Code with the REST Client extension.
 - `npm run rbac-smoke` in `apps/backend` repeats the automated part against a running API.
+- `npm test` in `apps/frontend` repeats the component tests, including one per UI finding in `src/layout/ui-findings.test.tsx`.
