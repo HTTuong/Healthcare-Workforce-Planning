@@ -21,9 +21,9 @@ Start the API (`apps/backend`, `npm run start:dev`) and the UI (`apps/frontend`,
 playwright.config.ts   projects setup, api and e2e; HTML, JUnit and list reporters; traces on failure
 api/                   ApiClient: one signed in client per user, raw requests and short domain calls
 pages/                 page objects: AppShell, LoginPage, EmployeesPage
-fixtures/test.ts       api (a client per role, per worker), anonymousApi, signInAs(role, path)
-factories/             test data: the account of each role now, domain factories next
-utils/                 env, unique names, Helsinki time
+fixtures/test.ts       api (a client per role, per worker), anonymousApi, signInAs(role, path), factories
+factories/             test data by business meaning (see factories/README.md)
+utils/                 env, unique names, Helsinki time, the shared test week
 tests/setup/           runs first: one account per role with a known role, state and password
 tests/api/             API tests, no browser
 tests/e2e/             browser tests through the UI
@@ -36,6 +36,7 @@ tests/e2e/             browser tests through the UI
 - `signInAs` puts a role's token where the UI keeps it, so most browser tests skip the login form. The form itself is tested in `tests/e2e/login.spec.ts`.
 - A failed setup call reports the method, the path, the status and the API's message.
 - Retries are off locally and 1 in CI. A test that passes on retry is reported as flaky, not as a pass.
-- Tests are tagged by group (`@smoke` now, the test groups A to I named in `docs/risk-analysis.md` next).
+- Tests are tagged by group (`@smoke`, `@factories`, then the test groups A to I named in `docs/risk-analysis.md`).
+- A test named `PINNED` records a known wrong behavior on purpose. It fails when the behavior is fixed, and changes together with the fix.
 
 `@playwright/test` is pinned to 1.56.0, the version whose Chromium the scratch environment that ran these tests provides. Moving to a newer version needs `npx playwright install chromium` again.

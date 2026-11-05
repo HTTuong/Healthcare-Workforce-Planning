@@ -42,6 +42,8 @@ All four scores are implemented in `apps/backend/src/scheduling/soft-scores.ts`.
 
 The weights are a design assumption to confirm with the product owner. The engine ranks candidates by the quality score after each assignment.
 
+Open question D-01 (day 30/11): BR-H01 says an employee is assigned only to shifts whose required qualifications they hold. The engine counts requirements inside the headcount and may give the remaining places to anyone, so a 1 person shift that needs a qualification can get an unqualified employee when nobody qualified is free. The schedule then shows BR-H06 and cannot be approved. To decide with the product owner: should a place be left empty when only the requirement can fill it, or is the current reading acceptable? A pinned test in `playwright/tests/api/factories.spec.ts` records today's behavior.
+
 ## Workflow rules
 
 | Id | Rule | Test group |
