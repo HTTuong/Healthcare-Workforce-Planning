@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/auth-context';
 import { can } from '../auth/permissions';
 import type { Department } from '../employees/types';
+import { usePageTitle } from '../layout/usePageTitle';
 import { formatDate } from '../time/helsinki';
 import { StatusBadge } from './StatusBadge';
 import { type ScheduleStatus, type ScheduleSummary, STATUS_LABELS } from './types';
@@ -19,6 +20,7 @@ export function SchedulesPage() {
   const [department, setDepartment] = useState('');
   const [status, setStatus] = useState<ScheduleStatus | ''>('');
   const notice = (useLocation().state as { notice?: string } | null)?.notice;
+  usePageTitle('Schedules');
 
   useEffect(() => {
     let active = true;

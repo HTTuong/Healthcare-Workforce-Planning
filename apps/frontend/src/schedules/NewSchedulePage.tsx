@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/auth-context';
 import type { Department } from '../employees/types';
+import { usePageTitle } from '../layout/usePageTitle';
 import { checkPeriod, daysInPeriod, defaultPeriod } from './period';
 import type { ScheduleSummary } from './types';
 
@@ -11,6 +12,7 @@ export function NewSchedulePage() {
   const { request } = useAuth();
   const navigate = useNavigate();
   const id = useId();
+  usePageTitle('New schedule');
   const [departments, setDepartments] = useState<Department[]>([]);
   const [department, setDepartment] = useState('');
   const [period, setPeriod] = useState(defaultPeriod);

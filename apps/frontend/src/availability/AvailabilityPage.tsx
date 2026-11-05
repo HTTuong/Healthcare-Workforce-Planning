@@ -1,6 +1,7 @@
 import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/auth-context';
+import { usePageTitle } from '../layout/usePageTitle';
 import { todayLocal, toOffsetString } from '../time/helsinki';
 import { describeRange, fieldsOf, findOverlap, type RangeFields, rangeInstants } from './availability-form';
 import { type Availability, AVAILABILITY_HELP, AVAILABILITY_LABELS, type AvailabilityType } from './types';
@@ -28,6 +29,7 @@ export function AvailabilityPage() {
   const { state, request } = useAuth();
   const me = state.status === 'signed-in' ? state.user.sub : null;
   const formId = useId();
+  usePageTitle('My availability');
   const [records, setRecords] = useState<Availability[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showPast, setShowPast] = useState(false);

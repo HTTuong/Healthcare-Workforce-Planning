@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/auth-context';
 import { can } from '../auth/permissions';
 import type { Department } from '../employees/types';
+import { usePageTitle } from '../layout/usePageTitle';
 import { addDays, formatDate, formatDuration, localParts, minutesBetween, mondayOf, todayLocal, toInstant } from '../time/helsinki';
 import { type Qualification, type Shift, SHIFT_TYPE_LABELS } from './types';
 
@@ -23,6 +24,7 @@ export function ShiftsPage() {
   const week = mondayOf(/^\d{4}-\d{2}-\d{2}$/.test(params.get('week') ?? '') ? params.get('week')! : todayLocal());
   const department = params.get('department') ?? '';
   const [load, setLoad] = useState<Load>({ status: 'loading' });
+  usePageTitle('Shifts');
 
   const fetchAll = useCallback(() => {
     const query = department === '' ? '' : `?departmentId=${department}`;

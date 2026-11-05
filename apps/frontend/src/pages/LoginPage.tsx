@@ -2,6 +2,7 @@ import { type FormEvent, useId, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { ApiError } from '../api/client';
 import { useAuth } from '../auth/auth-context';
+import { usePageTitle } from '../layout/usePageTitle';
 
 interface FieldErrors {
   email?: string;
@@ -38,6 +39,7 @@ export function LoginPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const id = useId();
+  usePageTitle('Sign in');
 
   if (state.status === 'signed-in') return <Navigate to={from} replace />;
 

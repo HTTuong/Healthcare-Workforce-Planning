@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth/auth-context';
 import { ROLE_LABELS } from '../auth/types';
+import { usePageTitle } from '../layout/usePageTitle';
 
 /** The first page after login: who is signed in, with the department name read from the API. */
 export function HomePage() {
@@ -8,6 +9,7 @@ export function HomePage() {
   const user = state.status === 'signed-in' ? state.user : null;
   const departmentId = user?.departmentId ?? null;
   const [department, setDepartment] = useState<string | null>(null);
+  usePageTitle('Home');
 
   useEffect(() => {
     if (departmentId === null) return;

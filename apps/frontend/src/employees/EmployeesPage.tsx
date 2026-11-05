@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router';
 import { useAuth } from '../auth/auth-context';
 import { can } from '../auth/permissions';
 import { ROLE_LABELS, type Role } from '../auth/types';
+import { usePageTitle } from '../layout/usePageTitle';
 import { formatContract } from './contract';
 import type { Department, Employee } from './types';
 
@@ -17,6 +18,7 @@ export function EmployeesPage() {
   const [search, setSearch] = useState('');
   const [role, setRole] = useState<Role | ''>('');
   const [showInactive, setShowInactive] = useState(true);
+  usePageTitle('Employees');
 
   const fetchAll = useCallback(() => {
     Promise.all([request<Employee[]>('GET', '/employees'), request<Department[]>('GET', '/departments')])
