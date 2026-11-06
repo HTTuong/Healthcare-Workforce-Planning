@@ -10,6 +10,7 @@ npm install
 npx playwright install chromium
 npm test                      # setup, then api and e2e
 npm run test:smoke            # only the tests tagged @smoke
+npx playwright test --grep @groupA   # one test group; --grep @T03 runs one test case
 npm run report                # the HTML report of the last run
 ```
 
@@ -20,7 +21,7 @@ Start the API (`apps/backend`, `npm run start:dev`) and the UI (`apps/frontend`,
 ```
 playwright.config.ts   projects setup, api and e2e; HTML, JUnit and list reporters; traces on failure
 api/                   ApiClient: one signed in client per user, raw requests and short domain calls
-pages/                 page objects: AppShell, LoginPage, EmployeesPage
+pages/                 page objects: AppShell, LoginPage, EmployeesPage, EmployeeFormPage
 fixtures/test.ts       api (a client per role, per worker), anonymousApi, signInAs(role, path), factories
 factories/             test data by business meaning (see factories/README.md)
 utils/                 env, unique names, Helsinki time, the shared test week
