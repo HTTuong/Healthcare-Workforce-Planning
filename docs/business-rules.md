@@ -20,6 +20,8 @@ A schedule with any hard violation cannot be approved.
 | BR-H06 | Every shift reaches its required headcount, including the required number of each qualification | | C, D |
 | BR-H07 | Only active employees can be assigned | | A, D |
 
+How a broken BR-H01 is reported: an assignment does not record which requirement it fills, so a person without a valid qualification on a shift that needs it shows as a BR-H06 shortage of that qualification ("Shift 12 has 0 of 1 people with qualification 3 valid for the shift"), not as a BR-H01 violation with the person's id. The engine never makes such an assignment; a hand edit or a qualification that lapses after generation can, and approval refuses it either way (checked in Playwright group D).
+
 ## Soft constraints (scored, not enforced)
 
 The engine tries to improve these and reports a quality score from 0 to 100.
