@@ -54,7 +54,7 @@ Open question D-01 (day 30/11): BR-H01 says an employee is assigned only to shif
 | BR-W04 | Employees see only PUBLISHED schedules | F, G |
 
 How the API applies them (day 20/11):
-- BR-W01: adding or removing an assignment, generating and deleting are refused with 409 unless the schedule is DRAFT or OPTIMIZED. A hand edit moves an OPTIMIZED schedule back to DRAFT, and only an OPTIMIZED schedule can be submitted.
+- BR-W01: adding or removing an assignment, generating and deleting are refused with 409 unless the schedule is DRAFT or OPTIMIZED. A hand edit moves an OPTIMIZED schedule back to DRAFT, and only an OPTIMIZED schedule can be submitted. A schedule shows the shifts of its department inside its period and the shifts it has assignments for, so creating, changing or deleting such a shift, or its requirements, is refused with 409 while the schedule is in REVIEW, APPROVED or PUBLISHED (R-WF-02), and moves an OPTIMIZED schedule back to DRAFT (F-12).
 - BR-W02: publish is refused with 409 unless the schedule is APPROVED. PUBLISHED is final.
 - BR-W03: approval validates the whole schedule again with the data of that moment and answers 409 with the list of violations, so an expired qualification or a schedule approved in the meantime is caught.
 - BR-W04: an employee gets 404 for any schedule that is not PUBLISHED or that belongs to another department without one of their shifts, and sees only their own assignments.
