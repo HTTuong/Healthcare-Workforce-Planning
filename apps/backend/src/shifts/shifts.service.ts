@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { parseInstant, parsePositiveInt } from '../common/parse.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { assertNoLockedSchedule, reopenOptimized } from './shift-lock.js';
 
 const TYPES = ['MORNING', 'EVENING', 'NIGHT'] as const;
 type ShiftKind = (typeof TYPES)[number];
@@ -82,12 +83,15 @@ export class ShiftsService {
     const requiredHeadcount = parsePositiveInt(input.requiredHeadcount, 'requiredHeadcount');
     assertRange(startsAt, endsAt);
     const requirements = parseRequirements(input.requirements, requiredHeadcount);
+    await assertNoLockedSchedule(this.prisma, [{ departmentId, startsAt, endsAt }]);
     try {
       // Nested create: the shift and its requirements are written in one transaction.
-      return await this.prisma.shift.create({
+      const created = await this.prisma.shift.create({
         data: { departmentId, type, startsAt, endsAt, requiredHeadcount, requirements: { create: requirements } },
         include: { requirements: true }
       });
+      await reopenOptimized(this.prisma, [{ id: created.id, departmentId, startsAt, endsAt }]);
+      return created;
     } catch (error) {
       if (errorCode(error) === 'P2003') throw new NotFoundException('Department or qualification not found');
       throw error;
@@ -110,14 +114,23 @@ export class ShiftsService {
     if (largest > requiredHeadcount) {
       throw new BadRequestException(`requiredHeadcount ${requiredHeadcount} is below an existing requirement count ${largest}`);
     }
-    return this.prisma.shift.update({
+    const places = [existing, { id, departmentId: existing.departmentId, startsAt, endsAt }];
+    await assertNoLockedSchedule(this.prisma, places);
+    const updated = await this.prisma.shift.update({
       where: { id },
       data: { type, startsAt, endsAt, requiredHeadcount },
       include: { requirements: true }
     });
+    await reopenOptimized(this.prisma, places);
+    return updated;
   }
 
   async remove(id: number) {
+    const existing = await this.prisma.shift.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException(`Shift ${id} not found`);
+    await assertNoLockedSchedule(this.prisma, [existing]);
+    // Before the delete, while the schedules that use the shift can still be found through their assignments.
+    await reopenOptimized(this.prisma, [existing]);
     try {
       await this.prisma.shift.delete({ where: { id } });
     } catch (error) {
@@ -134,12 +147,15 @@ export class ShiftsService {
     if (count > shift.requiredHeadcount) {
       throw new BadRequestException(`count ${count} exceeds requiredHeadcount ${shift.requiredHeadcount}`);
     }
+    await assertNoLockedSchedule(this.prisma, [shift]);
     try {
-      return await this.prisma.shiftRequirement.upsert({
+      const requirement = await this.prisma.shiftRequirement.upsert({
         where: { shiftId_qualificationId: { shiftId, qualificationId } },
         create: { shiftId, qualificationId, count },
         update: { count }
       });
+      await reopenOptimized(this.prisma, [shift]);
+      return requirement;
     } catch (error) {
       if (errorCode(error) === 'P2003') throw new NotFoundException(`Qualification ${qualificationId} not found`);
       throw error;
@@ -147,8 +163,12 @@ export class ShiftsService {
   }
 
   async removeRequirement(shiftId: number, qualificationId: number) {
+    const shift = await this.prisma.shift.findUnique({ where: { id: shiftId } });
+    if (!shift) throw new NotFoundException(`Shift ${shiftId} not found`);
+    await assertNoLockedSchedule(this.prisma, [shift]);
     try {
       await this.prisma.shiftRequirement.delete({ where: { shiftId_qualificationId: { shiftId, qualificationId } } });
+      await reopenOptimized(this.prisma, [shift]);
     } catch (error) {
       if (errorCode(error) === 'P2025') {
         throw new NotFoundException(`Shift ${shiftId} does not require qualification ${qualificationId}`);

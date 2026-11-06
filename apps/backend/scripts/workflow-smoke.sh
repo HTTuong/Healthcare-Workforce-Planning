@@ -192,13 +192,13 @@ check "the nurse's list contains it" True "$(request GET /schedules "$NURSE_TOKE
 check "the nurse's list holds only published schedules" True "$(field ".__iter__() and all(s['status'] == 'PUBLISHED' for s in d)")"
 check "an employee of another ward cannot see it" 404 "$(request GET "/schedules/$MAIN" "$EMPLOYEE_TOKEN")"
 
-echo "== Open gap R-WF-02, pinned: shifts of a published schedule can still be changed"
-# These checks record today's wrong behavior on purpose. When shifts used by an approved or published schedule are
-# locked, they fail, and the expected values change to 409 together with the fix.
-check "PINNED R-WF-02: a planner can change a shift of the published schedule" 200 "$(request PATCH "/shifts/$SHIFT_A" "$PLANNER_TOKEN" '{"requiredHeadcount":2}')"
-check "PINNED R-WF-02: a planner can delete it" 204 "$(request DELETE "/shifts/$SHIFT_A" "$PLANNER_TOKEN")"
-check "PINNED R-WF-02: its assignment silently leaves the published schedule" 0 "$(request GET "/schedules/$MAIN" "$PLANNER_TOKEN" >/dev/null; field ".__iter__ and sum(1 for a in d['assignments'] if a['shiftId'] == $SHIFT_A)")"
-check "PINNED R-WF-02: the schedule still says PUBLISHED" PUBLISHED "$(field '["status"]')"
+echo "== Shifts of a published schedule are locked (R-WF-02, BR-W01)"
+# Until 07/11/2026 these checks were pinned to the wrong behavior: 200, 204 and an assignment that left the schedule.
+check "a planner cannot change a shift of the published schedule" 409 "$(request PATCH "/shifts/$SHIFT_A" "$PLANNER_TOKEN" '{"requiredHeadcount":2}')"
+check "a planner cannot delete it" 409 "$(request DELETE "/shifts/$SHIFT_A" "$PLANNER_TOKEN")"
+check "a planner cannot add a shift inside the published period" 409 "$(request POST /shifts "$PLANNER_TOKEN" "{\"departmentId\":$WARD_A,\"type\":\"EVENING\",\"startsAt\":\"$(helsinki "$W1" 15)\",\"endsAt\":\"$(helsinki "$W1" 22)\",\"requiredHeadcount\":1}")"
+check "its assignment stays in the published schedule" 1 "$(request GET "/schedules/$MAIN" "$PLANNER_TOKEN" >/dev/null; field ".__iter__ and sum(1 for a in d['assignments'] if a['shiftId'] == $SHIFT_A)")"
+check "the schedule still says PUBLISHED" PUBLISHED "$(field '["status"]')"
 
 echo "== Parallel approval of two schedules that share a nurse (R-WF-01)"
 request POST /schedules "$PLANNER_TOKEN" "{\"departmentId\":$WARD_B,\"periodStart\":\"$W2\",\"periodEnd\":\"$W2_END\"}" >/dev/null
