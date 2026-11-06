@@ -23,6 +23,11 @@ export interface Employee {
   active: boolean;
 }
 
+/** GET /employees/:id adds the qualifications, with whether each is valid today. */
+export interface EmployeeDetail extends Employee {
+  qualifications: Array<{ qualificationId: number; code: string; name: string; validUntil: string | null; valid: boolean }>;
+}
+
 export interface Department {
   id: number;
   code: string;

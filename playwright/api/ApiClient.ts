@@ -1,5 +1,5 @@
 import { type APIRequestContext, type APIResponse, expect } from '@playwright/test';
-import type { Availability, Department, Employee, GenerateResult, Profile, Qualification, Role, Schedule, Shift, Violation } from './types';
+import type { Availability, Department, Employee, EmployeeDetail, GenerateResult, Profile, Qualification, Role, Schedule, Shift, Violation } from './types';
 
 type Body = Record<string, unknown>;
 
@@ -52,6 +52,7 @@ export class ApiClient {
 
   readonly employees = {
     list: () => this.ok<Employee[]>(this.get('/employees'), 'GET /employees'),
+    get: (id: number) => this.ok<EmployeeDetail>(this.get(`/employees/${id}`), `GET /employees/${id}`),
     create: (body: Body) => this.ok<Employee>(this.post('/employees', body), 'POST /employees'),
     update: (id: number, body: Body) => this.ok<Employee>(this.patch(`/employees/${id}`, body), `PATCH /employees/${id}`),
     setPassword: (id: number, password: string) =>
