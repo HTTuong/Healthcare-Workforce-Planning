@@ -83,7 +83,10 @@ export class ApiClient {
   };
 
   readonly shifts = {
-    create: (body: Body) => this.ok<Shift>(this.post('/shifts', body), 'POST /shifts')
+    create: (body: Body) => this.ok<Shift>(this.post('/shifts', body), 'POST /shifts'),
+    get: (id: number) => this.ok<Shift>(this.get(`/shifts/${id}`), `GET /shifts/${id}`),
+    list: (departmentId: number) => this.ok<Shift[]>(this.get(`/shifts?departmentId=${departmentId}`), `GET /shifts?departmentId=${departmentId}`),
+    update: (id: number, body: Body) => this.ok<Shift>(this.patch(`/shifts/${id}`, body), `PATCH /shifts/${id}`)
   };
 
   readonly schedules = {
