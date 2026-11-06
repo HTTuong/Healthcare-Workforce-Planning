@@ -16,3 +16,19 @@ export function isWriteConflict(error: unknown): boolean {
     field(cause, 'kind') === 'TransactionWriteConflict'
   );
 }
+
+/**
+ * Runs a serializable transaction again when PostgreSQL ends it with 40001, as the PostgreSQL manual asks of clients.
+ * A conflict is often false: without an index on the rows read, PostgreSQL watches the whole table, so two planners
+ * creating schedules for different departments at the same moment could refuse each other (F-11). Each attempt runs
+ * the whole transaction again, so it reads what the winner committed. After the last attempt the conflict is thrown.
+ */
+export async function retryOnWriteConflict<T>(run: () => Promise<T>, attempts = 3): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (error) {
+      if (attempt >= attempts || !isWriteConflict(error)) throw error;
+    }
+  }
+}

@@ -120,12 +120,24 @@ describe('SchedulesService create', () => {
     expect(prisma.schedule.create).not.toHaveBeenCalled();
   });
 
-  it('answers 404 for an unknown department and 409 when a parallel transaction wins', async () => {
+  it('answers 404 for an unknown department and 409 when parallel transactions keep winning', async () => {
     const { prisma, service } = makeService();
     prisma.$transaction.mockRejectedValueOnce({ code: 'P2003' });
     await expect(service.create(valid)).rejects.toBeInstanceOf(NotFoundException);
-    prisma.$transaction.mockRejectedValueOnce({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
+    // F-11: a single conflict is retried, so 409 needs three lost attempts in a row.
+    prisma.$transaction.mockReset().mockRejectedValue({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
     await expect(service.create(valid)).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(3);
+  });
+
+  it('runs the transaction again after one lost race and creates the schedule (F-11)', async () => {
+    const { prisma, service } = makeService();
+    prisma.schedule.findFirst.mockResolvedValue(null);
+    prisma.schedule.create.mockResolvedValue(row('DRAFT'));
+    prisma.$transaction.mockRejectedValueOnce({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
+    await expect(service.create(valid)).resolves.toMatchObject({ status: 'DRAFT' });
+    expect(prisma.schedule.create).toHaveBeenCalledTimes(1);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -304,6 +316,7 @@ describe('SchedulesService approve (BR-W03)', () => {
     const { prisma, service } = makeService();
     prisma.$transaction.mockRejectedValue({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
     await expect(service.approve(7, planner)).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(3);
   });
 });
 

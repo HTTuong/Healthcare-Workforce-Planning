@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthUser } from '../auth/auth.types.js';
-import { isWriteConflict } from '../common/db-errors.js';
+import { isWriteConflict, retryOnWriteConflict } from '../common/db-errors.js';
 import { parseLocalDate, parsePositiveInt } from '../common/parse.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { schedule as runEngine } from '../scheduling/engine.js';
@@ -89,18 +89,20 @@ export class SchedulesService {
     const start = new Date(`${periodStart}T00:00:00Z`);
     const end = new Date(`${periodEnd}T00:00:00Z`);
     try {
-      const created = await this.prisma.$transaction(
-        async (tx) => {
-          const overlapping = await tx.schedule.findFirst({
-            where: { departmentId, periodStart: { lte: end }, periodEnd: { gte: start } },
-            select: { id: true }
-          });
-          if (overlapping) {
-            throw new ConflictException(`Schedule ${overlapping.id} of department ${departmentId} already covers part of this period`);
-          }
-          return tx.schedule.create({ data: { departmentId, periodStart: start, periodEnd: end } });
-        },
-        { isolationLevel: 'Serializable' }
+      const created = await retryOnWriteConflict(() =>
+        this.prisma.$transaction(
+          async (tx) => {
+            const overlapping = await tx.schedule.findFirst({
+              where: { departmentId, periodStart: { lte: end }, periodEnd: { gte: start } },
+              select: { id: true }
+            });
+            if (overlapping) {
+              throw new ConflictException(`Schedule ${overlapping.id} of department ${departmentId} already covers part of this period`);
+            }
+            return tx.schedule.create({ data: { departmentId, periodStart: start, periodEnd: end } });
+          },
+          { isolationLevel: 'Serializable' }
+        )
       );
       return present(created);
     } catch (error) {
@@ -217,24 +219,26 @@ export class SchedulesService {
   async approve(id: number, user: AuthUser) {
     const { from, to } = WORKFLOW.approve;
     try {
-      await this.prisma.$transaction(
-        async (tx) => {
-          const row = await tx.schedule.findUnique({ where: { id } });
-          if (!row) throw new NotFoundException(`Schedule ${id} not found`);
-          if (!nextStatus(row.status, 'approve')) throw this.conflict(id, 'approve', row.status);
-          const input = await this.loader.load(row, tx);
-          const violations = validateSchedule(input, input.lockedAssignments);
-          if (violations.length > 0) {
-            throw new ConflictException({
-              statusCode: 409,
-              error: 'Conflict',
-              message: `Schedule ${id} breaks ${violations.length} hard rule(s) and cannot be approved (BR-W03)`,
-              violations
-            });
-          }
-          await tx.schedule.updateMany({ where: { id, status: { in: [...from] } }, data: { status: to } });
-        },
-        { isolationLevel: 'Serializable' }
+      await retryOnWriteConflict(() =>
+        this.prisma.$transaction(
+          async (tx) => {
+            const row = await tx.schedule.findUnique({ where: { id } });
+            if (!row) throw new NotFoundException(`Schedule ${id} not found`);
+            if (!nextStatus(row.status, 'approve')) throw this.conflict(id, 'approve', row.status);
+            const input = await this.loader.load(row, tx);
+            const violations = validateSchedule(input, input.lockedAssignments);
+            if (violations.length > 0) {
+              throw new ConflictException({
+                statusCode: 409,
+                error: 'Conflict',
+                message: `Schedule ${id} breaks ${violations.length} hard rule(s) and cannot be approved (BR-W03)`,
+                violations
+              });
+            }
+            await tx.schedule.updateMany({ where: { id, status: { in: [...from] } }, data: { status: to } });
+          },
+          { isolationLevel: 'Serializable' }
+        )
       );
     } catch (error) {
       if (isWriteConflict(error)) throw new ConflictException(CONCURRENT);
