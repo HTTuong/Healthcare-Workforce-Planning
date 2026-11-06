@@ -88,8 +88,18 @@ export interface Schedule {
   assignments?: Assignment[];
 }
 
+/** The soft scores (BR-S01 to BR-S04) and the quality score, each 0 to 100, unrounded. */
+export interface ScoreReport {
+  preference: number;
+  fairness: number;
+  workload: number;
+  overtime: number;
+  quality: number;
+}
+
 export interface GenerateResult {
   added: number;
   violations: Violation[];
   schedule: Schedule;
+  scores: ScoreReport;
 }

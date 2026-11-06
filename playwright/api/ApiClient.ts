@@ -1,5 +1,5 @@
 import { type APIRequestContext, type APIResponse, expect } from '@playwright/test';
-import type { Assignment, Availability, Department, Employee, EmployeeDetail, GenerateResult, Profile, Qualification, Role, Schedule, Shift, Violation } from './types';
+import type { Assignment, Availability, Department, Employee, EmployeeDetail, GenerateResult, Profile, Qualification, Role, Schedule, ScoreReport, Shift, Violation } from './types';
 
 type Body = Record<string, unknown>;
 
@@ -92,7 +92,7 @@ export class ApiClient {
   readonly schedules = {
     create: (body: Body) => this.ok<Schedule>(this.post('/schedules', body), 'POST /schedules'),
     get: (id: number) => this.ok<Schedule>(this.get(`/schedules/${id}`), `GET /schedules/${id}`),
-    check: (id: number) => this.ok<{ violations: Violation[] }>(this.get(`/schedules/${id}/check`), `GET /schedules/${id}/check`),
+    check: (id: number) => this.ok<{ violations: Violation[]; scores: ScoreReport }>(this.get(`/schedules/${id}/check`), `GET /schedules/${id}/check`),
     generate: (id: number) => this.ok<GenerateResult>(this.post(`/schedules/${id}/generate`), `POST /schedules/${id}/generate`),
     assign: (id: number, shiftId: number, employeeId: number) =>
       this.ok<Assignment>(this.post(`/schedules/${id}/assignments`, { shiftId, employeeId }), `POST /schedules/${id}/assignments`),
