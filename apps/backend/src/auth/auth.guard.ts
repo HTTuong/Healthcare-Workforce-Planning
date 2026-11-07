@@ -4,9 +4,12 @@ import { JwtService } from '@nestjs/jwt';
 import { type AuthRequest, type AuthUser, ROLE_NAMES } from './auth.types.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 
+/**
+ * The header must be exactly "Bearer <token>" (RFC 6750). Splitting on spaces and taking two parts accepted
+ * "Bearer <token> extra" too (F-15). The scheme stays case sensitive (F-10, accepted).
+ */
 function extractBearerToken(header: string | undefined): string | undefined {
-  const [scheme, token] = (header ?? '').split(' ');
-  return scheme === 'Bearer' && token ? token : undefined;
+  return /^Bearer ([^\s]+)$/.exec(header ?? '')?.[1];
 }
 
 // A correctly signed token is still rejected if its content is not what we issue.

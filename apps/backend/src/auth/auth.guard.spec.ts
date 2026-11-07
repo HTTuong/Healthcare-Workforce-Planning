@@ -37,6 +37,16 @@ describe('AuthGuard', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
+  it('rejects a header with anything around the token, so only "Bearer <token>" is read (F-15)', async () => {
+    const token = await jwt.signAsync({ sub: 7, role: 'PLANNER' });
+    for (const authorization of [`Bearer ${token} extra`, `Bearer  ${token}`, `Bearer\t${token}`, `${token}`, 'Bearer ']) {
+      await expect(guard.canActivate(contextFor('profile', { headers: { authorization } }))).rejects.toBeInstanceOf(
+        UnauthorizedException
+      );
+    }
+    await expect(guard.canActivate(contextFor('profile', bearer(token)))).resolves.toBe(true);
+  });
+
   it('rejects a token that is not a JWT', async () => {
     await expect(guard.canActivate(contextFor('profile', bearer('garbage')))).rejects.toBeInstanceOf(
       UnauthorizedException
