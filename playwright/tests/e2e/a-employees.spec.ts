@@ -23,8 +23,10 @@ test.describe('A: employee management (UI)', { tag: '@groupA' }, () => {
     await list.search.fill(email);
     await expect(list.row(email)).toContainText('30 h 45 min');
     await expect(list.row(email)).toContainText(department.name);
-    const stored = (await api.ADMIN.employees.list()).find((e) => e.email === email);
-    expect(stored).toMatchObject({ role: 'PLANNER', departmentId: department.id, contractMinutesPerWeek: 1845, active: true });
+    // The row's edit link names the new id, so the API check reads one employee instead of the whole list (F-13).
+    const href = await list.row(email).getByRole('link', { name: 'Edit Helmi Laine' }).getAttribute('href');
+    const id = Number(/^\/employees\/(\d+)\/edit$/.exec(href ?? '')?.[1]);
+    expect(await api.ADMIN.employees.get(id)).toMatchObject({ email, role: 'PLANNER', departmentId: department.id, contractMinutesPerWeek: 1845, active: true });
   });
 
   test('T01 the form checks the fields before sending and shows a used email at the field', { tag: '@T01' }, async ({ signInAs, factories }) => {
