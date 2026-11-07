@@ -60,6 +60,9 @@ test.describe('B: availability (UI)', { tag: '@groupB' }, () => {
     await expect(page.alert).toHaveText('This overlaps your unavailable entry for Mon 3 Mar 2031 08:00 to 16:00. Change or delete that entry first.');
 
     // An entry added from another device after the page loaded: only the API knows it, and answers 409.
+    // In development React runs the loading effect twice (StrictMode), so the test waits until the page has finished
+    // loading; a second load landing after the new entry would let the page name it instead.
+    await page.page.waitForLoadState('networkidle');
     await me.availability.create({ employeeId: employee.id, type: 'LEAVE', startsAt: helsinki(WEEK.tuesday, '00:00'), endsAt: helsinki(WEEK.wednesday, '00:00') });
     await page.fillTimes('Available', [WEEK.tuesday, '08:00'], [WEEK.tuesday, '16:00']);
     await page.add.click();
