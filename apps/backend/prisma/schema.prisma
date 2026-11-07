@@ -145,6 +145,10 @@ model Schedule {
   updatedAt    DateTime       @updatedAt @db.Timestamptz(3)
   department   Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   assignments  Assignment[]
+
+  // The overlap check on create reads by department and period inside a serializable transaction. Without an index
+  // PostgreSQL reads and watches the whole table, so creates for different departments refused each other (F-11).
+  @@index([departmentId, periodStart])
 }
 
 model Assignment {

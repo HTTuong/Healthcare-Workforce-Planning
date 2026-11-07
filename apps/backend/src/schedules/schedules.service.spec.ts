@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthUser } from '../auth/auth.types.js';
+import { WRITE_CONFLICT_ATTEMPTS } from '../common/db-errors.js';
 import { employee, engineInput, shift } from '../scheduling/engine.fixtures.js';
 import type { EngineInput } from '../scheduling/engine.types.js';
 import { SchedulesService } from './schedules.service.js';
@@ -124,10 +125,10 @@ describe('SchedulesService create', () => {
     const { prisma, service } = makeService();
     prisma.$transaction.mockRejectedValueOnce({ code: 'P2003' });
     await expect(service.create(valid)).rejects.toBeInstanceOf(NotFoundException);
-    // F-11: a single conflict is retried, so 409 needs three lost attempts in a row.
+    // F-11: a conflict is retried, so 409 needs every attempt lost in a row.
     prisma.$transaction.mockReset().mockRejectedValue({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
     await expect(service.create(valid)).rejects.toBeInstanceOf(ConflictException);
-    expect(prisma.$transaction).toHaveBeenCalledTimes(3);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(WRITE_CONFLICT_ATTEMPTS);
   });
 
   it('runs the transaction again after one lost race and creates the schedule (F-11)', async () => {
@@ -316,7 +317,7 @@ describe('SchedulesService approve (BR-W03)', () => {
     const { prisma, service } = makeService();
     prisma.$transaction.mockRejectedValue({ cause: { originalCode: '40001', kind: 'TransactionWriteConflict' } });
     await expect(service.approve(7, planner)).rejects.toBeInstanceOf(ConflictException);
-    expect(prisma.$transaction).toHaveBeenCalledTimes(3);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(WRITE_CONFLICT_ATTEMPTS);
   });
 });
 

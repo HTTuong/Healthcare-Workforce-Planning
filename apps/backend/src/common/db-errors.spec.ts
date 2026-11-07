@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isWriteConflict, retryOnWriteConflict } from './db-errors.js';
+import { isWriteConflict, retryOnWriteConflict, WRITE_CONFLICT_ATTEMPTS } from './db-errors.js';
 
 describe('isWriteConflict', () => {
   it('recognises the error Prisma documents', () => {
@@ -42,6 +42,15 @@ describe('retryOnWriteConflict (F-11)', () => {
     const run = vi.fn().mockRejectedValue(conflict);
     await expect(retryOnWriteConflict(run, 3)).rejects.toBe(conflict);
     expect(run).toHaveBeenCalledTimes(3);
+  });
+
+  it('tries 5 times by default and pauses longer before each new attempt', async () => {
+    const run = vi.fn().mockRejectedValue(conflict);
+    const pause = vi.fn().mockResolvedValue(undefined);
+    await expect(retryOnWriteConflict(run, undefined, pause)).rejects.toBe(conflict);
+    expect(WRITE_CONFLICT_ATTEMPTS).toBe(5);
+    expect(run).toHaveBeenCalledTimes(5);
+    expect(pause.mock.calls.map(([attempt]) => attempt)).toEqual([1, 2, 3, 4]);
   });
 
   it('never repeats a transaction that failed for another reason', async () => {
