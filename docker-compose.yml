@@ -1,3 +1,9 @@
+# Local development: `docker compose up -d` starts PostgreSQL only, on port 5433, as before. The API and the UI run
+# with npm (see README.md).
+#
+# Whole stack: `docker compose --profile app up -d --build` also builds and starts the API on port 3000 and the UI on
+# port 8080, against the same database. Set JWT_SECRET in a .env file next to this one (see .env.example).
+# A fresh database for a full test run: `docker compose --profile app down -v` first (F-13: test data piles up).
 services:
   postgres:
     image: postgres:17
@@ -15,6 +21,32 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  backend:
+    profiles: [app]
+    build: apps/backend
+    environment:
+      DATABASE_URL: postgresql://hwp_user:hwp_password@postgres:5432/hwp?schema=public
+      # Not required here, or `docker compose up -d` for the database alone would fail without a .env file. The API
+      # itself refuses to start without a JWT_SECRET of at least 32 characters.
+      JWT_SECRET: ${JWT_SECRET:-}
+      # Used only by `docker compose run --rm backend npm run create-admin`.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    profiles: [app]
+    build: apps/frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   hwp_postgres_data:
