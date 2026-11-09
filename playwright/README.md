@@ -16,6 +16,8 @@ npm run report                # the HTML report of the last run
 
 Start the API (`apps/backend`, `npm run start:dev`) and the UI (`apps/frontend`, `npm run dev`) first. The admin is the account created with `npm run create-admin`.
 
+In CI (`CI=1`) a failed test is retried once and reported as flaky, and the workflow fails on any flaky test. `scripts/junit-summary.mjs` writes the run's totals and failed tests to the run page and fails when no test ran or a test was skipped.
+
 ## Structure
 
 ```
