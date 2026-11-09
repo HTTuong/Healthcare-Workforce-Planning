@@ -2,7 +2,7 @@
 
 This document defines what the scheduling engine must do before any of it is written: the exact meaning of every hard constraint, including its boundaries, the shape of the algorithm, and how each rule will be tested. The rules themselves are listed in `business-rules.md`. This document makes them precise enough to test.
 
-Status: design written on 2026-11-01. The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, the assignment algorithm in `engine.ts`, and the soft scores and the schedule quality score in `soft-scores.ts`.
+Status: design written on 2026-11-01, implemented and tested by 2026-11-09 (unit tests at 100 % coverage, Playwright groups D and E). The hard constraint checks are implemented in `apps/backend/src/scheduling/hard-constraints.ts`, with the local time helpers in `local-time.ts`, the assignment algorithm in `engine.ts`, and the soft scores and the schedule quality score in `soft-scores.ts`.
 
 ## Boundaries
 
