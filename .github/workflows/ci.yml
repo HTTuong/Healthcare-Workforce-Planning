@@ -1,0 +1,188 @@
+# Continuous integration: lint -> unit -> API and integration -> end to end -> report -> quality gate.
+# Every push and pull request runs the whole chain on a fresh database, so test data never piles up between runs (F-13).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Ephemeral values for a database that lives only as long as the job. Not secrets.
+  DATABASE_URL: postgresql://hwp_user:hwp_password@localhost:5432/hwp?schema=public
+  ADMIN_EMAIL: admin@example.com
+  ADMIN_PASSWORD: Ci-Admin-Password-123!
+  API_URL: http://localhost:3000
+  UI_URL: http://localhost:4173
+
+jobs:
+  lint:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - name: Backend
+        working-directory: apps/backend
+        run: |
+          npm ci
+          npm run lint
+          npx tsc --noEmit -p tsconfig.json
+      - name: Frontend (lint, type check and production build)
+        working-directory: apps/frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+      - name: Playwright project
+        working-directory: playwright
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+
+  unit:
+    name: Unit tests
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+      - name: Backend, with the 100 % coverage threshold of the scheduling engine
+        working-directory: apps/backend
+        run: |
+          npm ci
+          npx vitest run --coverage
+      - name: Frontend
+        working-directory: apps/frontend
+        run: |
+          npm ci
+          npm test
+
+  integration:
+    name: API, integration and end to end tests
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hwp_user
+          POSTGRES_PASSWORD: hwp_password
+          POSTGRES_DB: hwp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hwp_user -d hwp"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Generate a JWT secret for this run
+        run: |
+          secret="$(openssl rand -hex 32)"
+          echo "::add-mask::$secret"
+          echo "JWT_SECRET=$secret" >> "$GITHUB_ENV"
+
+      - name: Start the API on a fresh database
+        working-directory: apps/backend
+        run: |
+          npm ci
+          npx prisma migrate deploy
+          npm run build
+          npm run create-admin
+          nohup node dist/main.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf "$API_URL/" > /dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/api.log"; exit 1
+
+      - name: Start the UI (production build served by Vite preview)
+        working-directory: apps/frontend
+        run: |
+          npm ci
+          npm run build
+          nohup npx vite preview --port 4173 --strictPort > "$RUNNER_TEMP/ui.log" 2>&1 &
+          for i in $(seq 1 30); do curl -sf "$UI_URL/" > /dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/ui.log"; exit 1
+
+      - name: Integration smoke tests (role table and workflow, bash and curl)
+        working-directory: apps/backend
+        run: |
+          npm run rbac-smoke
+          npm run workflow-smoke
+
+      - name: Install Playwright and Chromium
+        working-directory: playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # One run for both projects, so the setup project runs once and the report holds every test. A test that passes
+      # only on its retry fails the run (--fail-on-flaky-tests): a flaky test is a finding, not a pass.
+      - name: API and end to end tests
+        working-directory: playwright
+        run: npx playwright test --project=api --project=e2e --fail-on-flaky-tests
+
+      - name: Upload the Playwright report and JUnit results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright/playwright-report/
+            playwright/test-results/
+          retention-days: 14
+
+      - name: Upload the server logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: |
+            ${{ runner.temp }}/api.log
+            ${{ runner.temp }}/ui.log
+          retention-days: 7
+
+      - name: Test summary
+        if: ${{ !cancelled() }}
+        working-directory: playwright
+        run: node scripts/junit-summary.mjs test-results/junit.xml >> "$GITHUB_STEP_SUMMARY"
+
+  quality-gate:
+    name: Quality gate
+    needs: [lint, unit, integration]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every stage passed
+        run: |
+          echo "lint: ${{ needs.lint.result }}, unit: ${{ needs.unit.result }}, integration: ${{ needs.integration.result }}"
+          test "${{ needs.lint.result }}" = success
+          test "${{ needs.unit.result }}" = success
+          test "${{ needs.integration.result }}" = success
