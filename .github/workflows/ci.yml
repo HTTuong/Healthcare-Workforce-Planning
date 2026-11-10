@@ -16,6 +16,9 @@ concurrency:
 permissions:
   contents: read
 
+# Runners are pinned to Ubuntu 24.04: ubuntu-latest moved to 26.04, which Playwright 1.56 (pinned in
+# playwright/package.json) cannot install Chromium on. Move both together.
+
 env:
   # Ephemeral values for a database that lives only as long as the job. Not secrets.
   DATABASE_URL: postgresql://hwp_user:hwp_password@localhost:5432/hwp?schema=public
@@ -27,7 +30,7 @@ env:
 jobs:
   lint:
     name: Lint and type check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -58,7 +61,7 @@ jobs:
   unit:
     name: Unit tests
     needs: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +84,7 @@ jobs:
   integration:
     name: API, integration and end to end tests
     needs: unit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -169,8 +172,9 @@ jobs:
             ${{ runner.temp }}/ui.log
           retention-days: 7
 
+      # Only when Playwright ran: without a JUnit file the step would add a second, misleading error.
       - name: Test summary
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && hashFiles('playwright/test-results/junit.xml') != '' }}
         working-directory: playwright
         run: node scripts/junit-summary.mjs test-results/junit.xml >> "$GITHUB_STEP_SUMMARY"
 
@@ -178,7 +182,7 @@ jobs:
     name: Quality gate
     needs: [lint, unit, integration]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Every stage passed
         run: |
